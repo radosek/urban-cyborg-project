@@ -117,11 +117,28 @@ pub fn run(g: &mut Game) {
 
     let mut pos = 1;
     loop {
-        pos = do_menu(meny_text, 6, pos);
-        if pos == 0 || pos == 6 {
-            break;
+        // CONTINUE appears when a quick save or autosave exists (not in replay tests, which
+        // compare against the original menu).
+        let can_continue = !sys::replaying() && crate::saves::latest().is_some();
+        if can_continue {
+            let text = format!("CONTINUE\n{}", meny_text);
+            pos = do_menu(&text, 7, pos);
+            if pos == 0 || pos == 7 {
+                break;
+            }
+            if pos == 1 {
+                crate::game::continue_game(g);
+                menu_music();
+                continue;
+            }
+            menu_choice(g, pos - 1);
+        } else {
+            pos = do_menu(meny_text, 6, pos);
+            if pos == 0 || pos == 6 {
+                break;
+            }
+            menu_choice(g, pos);
         }
-        menu_choice(g, pos);
     }
 
     let l = UrbanFont::new(LARGE_FONT);

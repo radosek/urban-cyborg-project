@@ -6,6 +6,7 @@ use crate::icache;
 const EXIST_DELAY: i32 = 100;
 const MOVE_DELAY: i32 = 2;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Points {
     pub base: Base,
 }
@@ -25,6 +26,7 @@ impl Points {
     }
 }
 
+#[typetag::serde]
 impl Obj for Points {
     crate::obj_boilerplate!();
 

@@ -31,6 +31,13 @@ impl Edge {
     }
 }
 
+/// Rebuilt from the config after loading a saved game.
+impl Default for Controls {
+    fn default() -> Self {
+        Controls::new(crate::config::get().ctrl_type)
+    }
+}
+
 pub struct Controls {
     kind: Kind,
     conf: KeyConf,

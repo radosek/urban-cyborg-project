@@ -7,6 +7,7 @@ use crate::objects::animate::Animation;
 
 const STATE_FROSEN: i32 = 0;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct FrosenBody {
     pub base: Base,
 }
@@ -27,6 +28,7 @@ impl FrosenBody {
     }
 }
 
+#[typetag::serde]
 impl Obj for FrosenBody {
     crate::obj_boilerplate!();
 

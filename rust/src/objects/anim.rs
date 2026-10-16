@@ -1,6 +1,6 @@
 //! Frame counter shared by animated objects (objects/anim.cc).
 
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Default, Debug)]
 pub struct Anim {
     current_delay: i32,
     current_frame: i32,

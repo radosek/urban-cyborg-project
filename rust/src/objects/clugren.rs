@@ -7,6 +7,7 @@ use crate::{icache, sound};
 const EXPLOSION_SAMPLE: &str = "samples/heart_1.wav";
 const ACCEL_COUNTER: i32 = 3;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ClusterGrenade {
     pub base: Base,
 }
@@ -30,6 +31,7 @@ impl ClusterGrenade {
     }
 }
 
+#[typetag::serde]
 impl Obj for ClusterGrenade {
     crate::obj_boilerplate!();
 

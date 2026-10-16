@@ -7,6 +7,7 @@ use crate::icache;
 const FRAME_DELAY: i32 = 4;
 const BURN_DELAY: i32 = 2000;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Fire {
     pub base: Base,
     anim: Anim,
@@ -32,6 +33,7 @@ impl Fire {
     }
 }
 
+#[typetag::serde]
 impl Obj for Fire {
     crate::obj_boilerplate!();
 

@@ -205,6 +205,18 @@ impl Replay {
     }
 }
 
+pub fn set_replay_frame(f: u64) {
+    with(|s| {
+        if let Some(r) = s.replay.as_mut() {
+            r.frame = f;
+            r.cur = r.steps.iter().take_while(|st| st.0 <= f).count();
+            if r.cur > 0 {
+                s.keys = r.steps[r.cur - 1].1;
+            }
+        }
+    });
+}
+
 pub fn replay_frame() -> u64 {
     with(|s| s.replay.as_ref().map(|r| r.frame).unwrap_or(0))
 }
@@ -657,7 +669,7 @@ enum VideoKey {
 }
 
 /// Processes window/input events. Called implicitly by every waiting function.
-/// F5 cycles the filter, F6 toggles CRT, F7 widescreen, Alt/Cmd+Enter fullscreen.
+/// F6 cycles the filter, F7 toggles CRT, F8 widescreen, Alt/Cmd+Enter fullscreen.
 pub fn pump() {
     let mut reopen = false;
     let mut video_change: Option<VideoKey> = None;
@@ -677,9 +689,9 @@ pub fn pump() {
                     }
                     if !repeat {
                         match sc {
-                            Scancode::F5 => video_change = Some(VideoKey::Filter),
-                            Scancode::F6 => video_change = Some(VideoKey::Crt),
-                            Scancode::F7 => video_change = Some(VideoKey::Widescreen),
+                            Scancode::F6 => video_change = Some(VideoKey::Filter),
+                            Scancode::F7 => video_change = Some(VideoKey::Crt),
+                            Scancode::F8 => video_change = Some(VideoKey::Widescreen),
                             _ => {}
                         }
                     }

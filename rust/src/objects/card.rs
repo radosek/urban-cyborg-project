@@ -4,6 +4,7 @@ use crate::engine::*;
 use crate::icache;
 use crate::objects::player::Player;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Card {
     pub base: Base,
     card: i32,
@@ -40,6 +41,7 @@ impl Card {
     }
 }
 
+#[typetag::serde]
 impl Obj for Card {
     crate::obj_boilerplate!();
 

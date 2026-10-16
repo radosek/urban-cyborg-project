@@ -9,6 +9,7 @@ const EXPLODE_SPEED: i32 = 4;
 const EXPLODE_DAMAGE: i32 = 10;
 const EXPLODE_FRAMES: i32 = 2;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Explosion {
     pub base: Base,
     anim: Anim,
@@ -37,6 +38,7 @@ impl Explosion {
     }
 }
 
+#[typetag::serde]
 impl Obj for Explosion {
     crate::obj_boilerplate!();
 

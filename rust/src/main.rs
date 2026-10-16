@@ -19,6 +19,7 @@ mod objects;
 mod otypes;
 mod outtro;
 mod rng;
+mod saves;
 mod score;
 mod sound;
 mod sys;

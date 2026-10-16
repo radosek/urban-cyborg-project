@@ -8,6 +8,7 @@ const EXPLOSION_SAMPLE: &str = "samples/heart_1.wav";
 const FIRE_SAMPLE: &str = "samples/grenade.wav";
 const ACCEL_COUNTER: i32 = 3;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Grenade {
     pub base: Base,
 }
@@ -39,6 +40,7 @@ impl Grenade {
     }
 }
 
+#[typetag::serde]
 impl Obj for Grenade {
     crate::obj_boilerplate!();
 

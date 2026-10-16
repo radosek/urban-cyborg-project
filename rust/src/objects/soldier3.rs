@@ -43,6 +43,7 @@ const FOOT_LEFT: i32 = 20;
 const FOOT_WIDTH: i32 = 22;
 const FOOT_RIGHT: i32 = FOOT_LEFT + FOOT_WIDTH;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Soldier3 {
     pub base: Base,
     anim: Anim,
@@ -76,6 +77,7 @@ impl Soldier3 {
     }
 }
 
+#[typetag::serde]
 impl Obj for Soldier3 {
     crate::obj_boilerplate!();
 

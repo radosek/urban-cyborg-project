@@ -8,6 +8,7 @@ use crate::{icache, rng::random, sound};
 const EXPLOSION_SAMPLE: &str = "samples/heart_1.wav";
 const FIRE_SAMPLE: &str = "samples/grenade.wav";
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Rocket {
     pub base: Base,
 }
@@ -32,6 +33,7 @@ impl Rocket {
     }
 }
 
+#[typetag::serde]
 impl Obj for Rocket {
     crate::obj_boilerplate!();
 

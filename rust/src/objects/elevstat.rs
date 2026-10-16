@@ -17,6 +17,7 @@ const STATE_LOCATESTATION: i32 = 5;
 const SEND_DELAY: i32 = 100;
 const FRAME_DELAY: i32 = 2;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ElevatorStation {
     pub base: Base,
     anim: Anim,
@@ -118,6 +119,7 @@ impl ElevatorStation {
     }
 }
 
+#[typetag::serde]
 impl Obj for ElevatorStation {
     crate::obj_boilerplate!();
 

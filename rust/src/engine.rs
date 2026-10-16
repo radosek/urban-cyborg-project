@@ -186,11 +186,74 @@ const LETTER_KEYS: [(usize, u8); 26] = [
 pub type ObjId = u32;
 static NEXT_ID: AtomicU32 = AtomicU32::new(1);
 
+/// Saved-game format version; bump when any saved struct changes.
+pub const SAVE_VERSION: u32 = 1;
+const SAVE_MAGIC: &[u8; 4] = b"URBQ";
+
+/// Everything needed to resume a level mid-play.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SaveState {
+    pub map_name: String,
+    /// Campaign level number (1..=18), 0 when playing a single map with -f.
+    pub level: i32,
+    /// Player data the level started with (for RESTART LEVEL).
+    pub level_start: PlayerData,
+    sections: [Vec<i32>; 3],
+    pal_type: i32,
+    pal_count: i32,
+    pal: Vec<Rgb>,
+    score: [i32; 4],
+    player: Option<Box<Player>>,
+    objects: Vec<Slot>,
+    alwaysupdate: Vec<Slot>,
+    effects: Vec<Slot>,
+    dekorations: Vec<Slot>,
+    dekor_pos: usize,
+    innerlayer: Vec<Slot>,
+    map_effect: Vec<Slot>,
+    map_dekor: Vec<Slot>,
+    map_x: i32,
+    map_y: i32,
+    do_shake: i32,
+    always_shake: bool,
+    lightening: i32,
+    max_time: i32,
+    max_update_area_x: i32,
+    control_type: i32,
+    rng: u64,
+    next_id: u32,
+    music: String,
+}
+
+impl SaveState {
+    pub fn write(&self, path: &std::path::Path) -> Result<(), String> {
+        let mut out = SAVE_MAGIC.to_vec();
+        out.extend_from_slice(&SAVE_VERSION.to_le_bytes());
+        out.extend(bincode::serialize(self).map_err(|e| e.to_string())?);
+        let tmp = path.with_extension("tmp");
+        std::fs::write(&tmp, out).map_err(|e| e.to_string())?;
+        std::fs::rename(&tmp, path).map_err(|e| e.to_string())
+    }
+
+    pub fn read(path: &std::path::Path) -> Result<SaveState, String> {
+        let b = std::fs::read(path).map_err(|e| e.to_string())?;
+        if b.len() < 8 || &b[..4] != SAVE_MAGIC {
+            return Err("not an URBAN save".into());
+        }
+        let v = u32::from_le_bytes([b[4], b[5], b[6], b[7]]);
+        if v != SAVE_VERSION {
+            return Err(format!("save from another version ({})", v));
+        }
+        bincode::deserialize(&b[8..]).map_err(|e| e.to_string())
+    }
+}
+
 /// Fields of the C++ `Object` base class. All start at zero like the (usually zeroed) heap memory
 /// the original relied on, except those its constructor set.
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Base {
     pub id: ObjId,
+    #[serde(with = "crate::icache::imgs_serde")]
     pub images: Vec<Img>,
     pub x: i32,
     pub y: i32,
@@ -326,6 +389,7 @@ impl Upd {
     }
 }
 
+#[typetag::serde(tag = "type")]
 pub trait Obj: Any {
     fn base(&self) -> &Base;
     fn base_mut(&mut self) -> &mut Base;
@@ -388,6 +452,7 @@ pub fn player_of<'a>(other: &'a mut dyn Obj, g: &'a mut Game) -> Option<&'a mut 
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum Slot {
     Obj(Box<dyn Obj>),
     /// Position of the player in the objects list; the player itself lives in `Game::player`.
@@ -411,7 +476,7 @@ struct Message {
     delay: i32,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
 pub struct PlayerData {
     pub num_lives: i32,
     pub weapon_ammo: [i32; 10],
@@ -453,6 +518,13 @@ pub struct Game {
     fps_n: i32,
     fps_n2: i32,
     fps_t: u64,
+    /// Map being played and its campaign level number (0 for -f maps); kept for saves.
+    pub map_name: String,
+    pub campaign_level: i32,
+    pub level_start: PlayerData,
+    music: String,
+    last_checkpoint: (i32, i32, i32),
+    save_keys: (bool, bool),
 }
 
 impl Game {
@@ -490,6 +562,12 @@ impl Game {
             fps_n: 0,
             fps_n2: 0,
             fps_t: 0,
+            map_name: String::new(),
+            campaign_level: 0,
+            level_start: PlayerData::default(),
+            music: String::new(),
+            last_checkpoint: (0, 0, 0),
+            save_keys: (false, false),
         }
     }
 
@@ -1212,13 +1290,230 @@ impl Game {
                 }
                 first_frame = false;
             }
-            if sys::key(KEY_ESC) {
-                return 0;
+            if sys::replaying() {
+                // Test hook (tools/savestatetest.sh): save at a given replay frame.
+                if let (Ok(at), Ok(path)) = (std::env::var("URBAN_SAVE_AT"), std::env::var("URBAN_SAVE_PATH")) {
+                    if at.parse::<u64>().ok() == Some(sys::replay_frame()) {
+                        let _ = self.snapshot_to(std::path::Path::new(&path));
+                    }
+                }
+                // Replay tests compare against the original, where ESC simply quits.
+                if sys::key(KEY_ESC) {
+                    return 0;
+                }
+            } else {
+                if let Some(code) = self.modern_controls() {
+                    return code;
+                }
             }
             if self.level_complete != 0 {
                 return self.level_complete;
             }
         }
+    }
+
+    /// Quick save (F5), quick load (F9), autosave at new checkpoints, and the ESC pause menu.
+    /// Returns a play_level result code when the player chose to leave the level.
+    fn modern_controls(&mut self) -> Option<i32> {
+        let (f5, f9) = (sys::key(KEY_F5), sys::key(KEY_F9));
+        let (was5, was9) = self.save_keys;
+        self.save_keys = (f5, f9);
+        if f5 && !was5 {
+            let msg = match self.snapshot_to(&crate::saves::quick_path()) {
+                Ok(()) => "Quick saved",
+                Err(_) => "Save failed",
+            };
+            self.push_message(msg);
+        }
+        if f9 && !was9 {
+            self.load_from(&crate::saves::quick_path());
+        }
+        if let Some(cp) = self.player.as_deref().map(|p| p.checkpoint()) {
+            if cp != self.last_checkpoint {
+                self.last_checkpoint = cp;
+                self.autosave();
+            }
+        }
+        if sys::key(KEY_ESC) {
+            return self.pause_menu();
+        }
+        None
+    }
+
+    fn autosave(&mut self) {
+        let _ = self.snapshot_to(&crate::saves::auto_path());
+    }
+
+    /// Loads a save in place (the level may change); shows a message on failure.
+    pub fn load_from(&mut self, path: &std::path::Path) -> bool {
+        match SaveState::read(path) {
+            Ok(st) => {
+                self.restore(st);
+                self.push_message("Game loaded");
+                true
+            }
+            Err(_) => {
+                self.push_message("No saved game");
+                false
+            }
+        }
+    }
+
+    fn pause_menu(&mut self) -> Option<i32> {
+        let width = self.buffer.w;
+        sys::set_screen_width(SCREEN_WIDTH);
+        let mut result = None;
+        loop {
+            match crate::menu::do_menu("RESUME\nSAVE\nLOAD\nOPTIONS\nRESTART\nQUIT", 6, 1) {
+                2 => {
+                    let ok = self.snapshot_to(&crate::saves::quick_path()).is_ok();
+                    self.push_message(if ok { "Quick saved" } else { "Save failed" });
+                    break;
+                }
+                3 => {
+                    self.load_from(&crate::saves::quick_path());
+                    break;
+                }
+                4 => {
+                    crate::config_ui::start();
+                    continue;
+                }
+                5 => {
+                    if crate::menu::do_menu("RESTART\nCANCEL", 2, 2) == 1 {
+                        result = Some(3);
+                    }
+                    break;
+                }
+                6 => {
+                    if crate::menu::do_menu("QUIT\nCANCEL", 2, 2) == 1 {
+                        result = Some(0);
+                    }
+                    break;
+                }
+                _ => break,
+            }
+        }
+        // ESC that closed the menu must not reopen it next frame.
+        while sys::key(KEY_ESC) {
+            sys::rest(10);
+        }
+        sys::clear_keybuf();
+        if result.is_none() {
+            sys::set_screen_width(width);
+            sys::set_palette(self.map.pal());
+            sys::wait_frame(FRAMESPERSEC as u32);
+        }
+        result
+    }
+
+    /// Writes the current level state. The object lists are moved into the save and back,
+    /// so nothing is copied.
+    pub fn snapshot_to(&mut self, path: &std::path::Path) -> Result<(), String> {
+        let (sections, pal_type, pal_count, pal) = self.map.save_state();
+        let mut st = SaveState {
+            map_name: self.map_name.clone(),
+            level: self.campaign_level,
+            level_start: self.level_start,
+            sections,
+            pal_type,
+            pal_count,
+            pal,
+            score: self.score.save_state(),
+            player: self.player.take(),
+            objects: std::mem::take(&mut self.objects),
+            alwaysupdate: std::mem::take(&mut self.alwaysupdate),
+            effects: std::mem::take(&mut self.effects),
+            dekorations: std::mem::take(&mut self.dekorations),
+            dekor_pos: self.dekor_pos,
+            innerlayer: std::mem::take(&mut self.innerlayer),
+            map_effect: std::mem::take(&mut self.map_effect),
+            map_dekor: std::mem::take(&mut self.map_dekor),
+            map_x: self.map_x,
+            map_y: self.map_y,
+            do_shake: self.do_shake,
+            always_shake: self.always_shake,
+            lightening: self.lightening,
+            max_time: self.max_time,
+            max_update_area_x: self.max_update_area_x,
+            control_type: self.control_type,
+            rng: rng::state(),
+            next_id: NEXT_ID.load(Ordering::Relaxed),
+            music: self.music.clone(),
+        };
+        let r = st.write(path);
+        self.player = st.player.take();
+        self.objects = std::mem::take(&mut st.objects);
+        self.alwaysupdate = std::mem::take(&mut st.alwaysupdate);
+        self.effects = std::mem::take(&mut st.effects);
+        self.dekorations = std::mem::take(&mut st.dekorations);
+        self.innerlayer = std::mem::take(&mut st.innerlayer);
+        self.map_effect = std::mem::take(&mut st.map_effect);
+        self.map_dekor = std::mem::take(&mut st.map_dekor);
+        r
+    }
+
+    /// Replaces the level state with a save.
+    pub fn restore(&mut self, st: SaveState) {
+        if st.map_name != self.map_name || self.map.width() == 0 {
+            if let Err(e) = self.map.load(&st.map_name) {
+                eprintln!("Can't open map '{}': {}", st.map_name, e);
+                return;
+            }
+        }
+        self.map_name = st.map_name;
+        self.campaign_level = st.level;
+        self.level_start = st.level_start;
+        self.map.restore_state(st.sections, st.pal_type, st.pal_count, &st.pal);
+        self.score.restore_state(st.score);
+        self.player = st.player;
+        self.objects = st.objects;
+        self.alwaysupdate = st.alwaysupdate;
+        self.effects = st.effects;
+        self.dekorations = st.dekorations;
+        self.dekor_pos = st.dekor_pos;
+        self.innerlayer = st.innerlayer;
+        self.map_effect = st.map_effect;
+        self.map_dekor = st.map_dekor;
+        self.map_x = st.map_x;
+        self.map_y = st.map_y;
+        self.do_shake = st.do_shake;
+        self.always_shake = st.always_shake;
+        self.lightening = st.lightening;
+        self.max_time = st.max_time;
+        self.max_update_area_x = st.max_update_area_x;
+        self.control_type = st.control_type;
+        self.level_complete = 0;
+        self.message = None;
+        self.background_available = false;
+        self.cheat_letters.clear();
+        rng::set_state(st.rng);
+        NEXT_ID.fetch_max(st.next_id, Ordering::Relaxed);
+        self.last_checkpoint = self.player.as_deref().map(|p| p.checkpoint()).unwrap_or_default();
+        if st.music != self.music && flags::sound_on() && !st.music.is_empty() {
+            sound::play_music(&st.music);
+        }
+        self.music = st.music;
+        sys::set_palette(self.map.pal());
+    }
+
+    /// Resumes a saved level (main menu CONTINUE). Same result codes as play_level.
+    pub fn play_saved(&mut self, st: SaveState, p_dat: &mut PlayerData) -> i32 {
+        self.restore(st);
+        sys::clear_keybuf();
+        self.apply_view_width();
+        let ret = self.play_loop();
+        sys::set_screen_width(SCREEN_WIDTH);
+        sys::clear_keybuf();
+        if let Some(p) = self.player.as_deref() {
+            p_dat.health = p.base().energy;
+            p_dat.num_lives = p.lives();
+            for i in 0..PLAYER_N_WEAPONS {
+                p_dat.weapon_ammo[i] = p.ammo_of(i);
+                p_dat.weapon_avail[i] = p.have_weapon(i) as i32;
+            }
+            p_dat.score = self.score.get_score();
+        }
+        ret
     }
 
     /// Clears per-level state. Keeps the player when `keep_player`.
@@ -1257,6 +1552,10 @@ impl Game {
             rng::seed(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(1));
         }
         self.control_type = controls;
+        self.map_name = map_name.to_string();
+        if let Some(pd) = p_dat.as_deref() {
+            self.level_start = *pd;
+        }
         if let Err(e) = self.map.load(map_name) {
             eprintln!("Can't open map '{}': {}", map_name, e);
             std::process::exit(1);
@@ -1281,6 +1580,17 @@ impl Game {
         sys::clear_keybuf();
         self.cheat_letters.clear();
         self.apply_view_width();
+        self.last_checkpoint = self.player.as_deref().map(|p| p.checkpoint()).unwrap_or_default();
+        if !sys::replaying() {
+            self.autosave();
+        }
+        // Test hook: replace the fresh level with a save and continue the replay from its frame.
+        if let (Ok(path), Ok(frame)) = (std::env::var("URBAN_LOAD_PATH"), std::env::var("URBAN_LOAD_FRAME")) {
+            if let Ok(st) = SaveState::read(std::path::Path::new(&path)) {
+                self.restore(st);
+                sys::set_replay_frame(frame.parse().unwrap_or(0));
+            }
+        }
         let ret = self.play_loop();
         sys::set_screen_width(SCREEN_WIDTH);
         sys::clear_keybuf();
@@ -1404,6 +1714,7 @@ impl Game {
         if flags::sound_on() {
             sound::play_music(&music);
         }
+        self.music = music.clone();
         for v in 0..vol {
             sound::set_music_volume(v);
             sys::rest(10);

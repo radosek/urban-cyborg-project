@@ -7,6 +7,7 @@ use crate::icache;
 const STATE_NONE: i32 = 0;
 const STATE_DESTROY: i32 = 2;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ElevatorWire {
     pub base: Base,
     elev_controller: Option<ObjId>,
@@ -60,6 +61,7 @@ pub(crate) fn with_wire(g: &mut Game, id: ObjId, f: impl FnOnce(&mut ElevatorWir
     g.innerlayer[i] = Slot::Obj(o);
 }
 
+#[typetag::serde]
 impl Obj for ElevatorWire {
     crate::obj_boilerplate!();
 

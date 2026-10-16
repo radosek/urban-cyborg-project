@@ -4,6 +4,7 @@
 use crate::engine::*;
 use crate::objects::soldier2::Soldier2;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Soldier4 {
     inner: Soldier2,
 }
@@ -14,6 +15,7 @@ impl Soldier4 {
     }
 }
 
+#[typetag::serde]
 impl Obj for Soldier4 {
     fn base(&self) -> &Base {
         &self.inner.base

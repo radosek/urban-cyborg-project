@@ -48,7 +48,7 @@ const NUM_LIFES: i32 = 3;
 const MAX_ENERGY: i32 = 300;
 const EMPTY_IMAGE: i32 = 240;
 
-#[derive(Clone, Copy)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy)]
 struct Weapon {
     walk_left: [i32; 6],
     walk_right: [i32; 6],
@@ -107,9 +107,11 @@ const WEAPONS: [Weapon; NUM_WEAPONS] = [
     w(210, 204, 222, 216, 234, 228, 6, 6, 0, false, false, 100),
 ];
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Player {
     pub base: Base,
     anim: Anim,
+    #[serde(skip)]
     ctrl: Controls,
     weapon: [Weapon; NUM_WEAPONS],
     elevator: Option<ObjId>,
@@ -253,6 +255,11 @@ impl Player {
             saved_mode,
             fall_counter: 0,
         }
+    }
+
+    /// Respawn position (changes when a checkpoint is reached).
+    pub fn checkpoint(&self) -> (i32, i32, i32) {
+        (self.save_x, self.save_y, self.save_z)
     }
 
     pub fn move_to(&mut self, x: i32, y: i32, z: i32) {
@@ -645,6 +652,7 @@ impl Player {
     }
 }
 
+#[typetag::serde]
 impl Obj for Player {
     crate::obj_boilerplate!();
 

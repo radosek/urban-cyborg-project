@@ -5,6 +5,7 @@ use crate::engine::*;
 use crate::icache;
 use crate::map::{PAL_AIR, PAL_WATER};
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Water {
     pub base: Base,
     anim: Anim,
@@ -26,6 +27,7 @@ impl Water {
     }
 }
 
+#[typetag::serde]
 impl Obj for Water {
     crate::obj_boilerplate!();
 

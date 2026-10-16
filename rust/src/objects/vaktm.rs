@@ -20,6 +20,7 @@ const STATE_TURN: i32 = 2;
 
 const MAX_X_SPEED: i32 = 1;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Vaktm {
     pub base: Base,
     anim: Anim,
@@ -42,6 +43,7 @@ impl Vaktm {
     }
 }
 
+#[typetag::serde]
 impl Obj for Vaktm {
     crate::obj_boilerplate!();
 

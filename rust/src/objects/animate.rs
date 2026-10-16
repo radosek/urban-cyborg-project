@@ -7,7 +7,7 @@ use crate::icache;
 const MAX_Y_SPEED: i32 = 4;
 const Y_ACCEL: i32 = 1;
 
-#[derive(Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
 pub struct Animation {
     pub base: Base,
     anim: Anim,
@@ -31,6 +31,7 @@ impl Animation {
     }
 }
 
+#[typetag::serde]
 impl Obj for Animation {
     crate::obj_boilerplate!();
 

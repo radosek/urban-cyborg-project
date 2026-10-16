@@ -4,6 +4,7 @@ use super::anim::Anim;
 use crate::engine::*;
 use crate::icache;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Gnistor {
     pub base: Base,
     anim: Anim,
@@ -29,6 +30,7 @@ impl Gnistor {
     }
 }
 
+#[typetag::serde]
 impl Obj for Gnistor {
     crate::obj_boilerplate!();
 

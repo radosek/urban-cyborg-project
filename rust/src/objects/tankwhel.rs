@@ -8,6 +8,7 @@ const STATE_NONE: i32 = 0;
 const MAX_Y_SPEED: i32 = 16;
 const Y_ACCEL: i32 = 1;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct TankWheel {
     pub base: Base,
     anim: Anim,
@@ -49,6 +50,7 @@ impl TankWheel {
     }
 }
 
+#[typetag::serde]
 impl Obj for TankWheel {
     crate::obj_boilerplate!();
 

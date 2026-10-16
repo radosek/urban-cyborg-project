@@ -8,6 +8,7 @@ const STATE_NONE: i32 = 0x00;
 const MAX_LIFE: i32 = 200;
 const MIN_LIFE: i32 = 50;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Bubble {
     pub base: Base,
 }
@@ -31,6 +32,7 @@ impl Bubble {
     }
 }
 
+#[typetag::serde]
 impl Obj for Bubble {
     crate::obj_boilerplate!();
 

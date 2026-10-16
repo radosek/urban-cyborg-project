@@ -188,6 +188,22 @@ impl Map {
         Ok(())
     }
 
+    /// Tile layers and palette state, for saved games (tiles change when walls are destroyed).
+    pub fn save_state(&self) -> ([Vec<i32>; 3], i32, i32, Vec<Rgb>) {
+        (self.sections.clone(), self.pal_type, self.pal_count, self.pal.to_vec())
+    }
+
+    pub fn restore_state(&mut self, sections: [Vec<i32>; 3], pal_type: i32, pal_count: i32, pal: &[Rgb]) {
+        if sections.iter().all(|s| s.len() == (self.x_size * self.y_size) as usize) {
+            self.sections = sections;
+        }
+        self.pal_type = pal_type;
+        self.pal_count = pal_count.clamp(0, 64);
+        if pal.len() == 256 {
+            self.pal.copy_from_slice(pal);
+        }
+    }
+
     pub fn width(&self) -> i32 {
         self.x_size
     }

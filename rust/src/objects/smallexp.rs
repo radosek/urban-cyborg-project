@@ -4,6 +4,7 @@ use super::anim::Anim;
 use crate::engine::*;
 use crate::{icache, rng};
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct SmallExplosion {
     pub base: Base,
     anim: Anim,
@@ -28,6 +29,7 @@ impl SmallExplosion {
     }
 }
 
+#[typetag::serde]
 impl Obj for SmallExplosion {
     crate::obj_boilerplate!();
 

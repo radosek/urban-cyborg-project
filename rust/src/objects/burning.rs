@@ -23,6 +23,7 @@ const STATE_BURNING: i32 = 5;
 
 const BURN_DELAY: i32 = 300;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct BurningBody {
     pub base: Base,
     anim: Anim,
@@ -46,6 +47,7 @@ impl BurningBody {
     }
 }
 
+#[typetag::serde]
 impl Obj for BurningBody {
     crate::obj_boilerplate!();
 

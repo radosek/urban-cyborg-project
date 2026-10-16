@@ -57,3 +57,47 @@ pub fn seq(prefix: &str, first: i32, count: i32, suffix: &str) -> Vec<Img> {
 pub fn exists(name: &str) -> bool {
     CACHE.with(|c| c.borrow().as_ref().map(|c| c.dat.get(&format!("gfx/{}", name)).is_some()).unwrap_or(false))
 }
+
+/// Name of a cached image, found by pointer (used when saving games).
+pub fn name_of(img: &Img) -> Option<String> {
+    CACHE.with(|c| {
+        let c = c.borrow();
+        let c = c.as_ref()?;
+        c.images.iter().find(|(_, (i, _))| Rc::ptr_eq(i, img)).map(|(k, _)| k.trim_start_matches("gfx/").to_string())
+    })
+}
+
+/// Serde adapter for `Vec<Img>`: cached images are stored by file name and reloaded from the
+/// game data; images made at runtime (rendered text) are stored as raw pixels.
+pub mod imgs_serde {
+    use super::*;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    #[derive(Serialize, Deserialize)]
+    enum ImgRef {
+        Cached(String),
+        Raw { w: i32, h: i32, data: Vec<u8> },
+    }
+
+    pub fn serialize<S: Serializer>(imgs: &Vec<Img>, s: S) -> Result<S::Ok, S::Error> {
+        let refs: Vec<ImgRef> = imgs
+            .iter()
+            .map(|i| match name_of(i) {
+                Some(n) => ImgRef::Cached(n),
+                None => ImgRef::Raw { w: i.w, h: i.h, data: i.data.clone() },
+            })
+            .collect();
+        refs.serialize(s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<Img>, D::Error> {
+        let refs = Vec::<ImgRef>::deserialize(d)?;
+        Ok(refs
+            .into_iter()
+            .map(|r| match r {
+                ImgRef::Cached(n) => get(&n),
+                ImgRef::Raw { w, h, data } => Rc::new(Bitmap { w, h, data }),
+            })
+            .collect())
+    }
+}

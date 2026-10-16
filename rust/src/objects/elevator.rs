@@ -7,6 +7,7 @@ const STATE_NONE: i32 = 0;
 const STATE_MOVE: i32 = 1;
 const STATE_STOP: i32 = 2;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Elevator {
     pub base: Base,
     /// Set when the player touched the elevator since the last update.
@@ -55,6 +56,7 @@ impl Elevator {
     }
 }
 
+#[typetag::serde]
 impl Obj for Elevator {
     crate::obj_boilerplate!();
 

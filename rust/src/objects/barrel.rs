@@ -4,6 +4,7 @@ use super::explode::Explosion;
 use crate::engine::*;
 use crate::icache;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Barrel {
     pub base: Base,
     #[allow(dead_code)]
@@ -25,6 +26,7 @@ impl Barrel {
     }
 }
 
+#[typetag::serde]
 impl Obj for Barrel {
     crate::obj_boilerplate!();
 

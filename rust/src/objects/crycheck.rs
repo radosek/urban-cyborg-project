@@ -41,6 +41,7 @@ const FOOT_LEFT: i32 = 39;
 const FOOT_WIDTH: i32 = 17;
 const FOOT_RIGHT: i32 = FOOT_LEFT + FOOT_WIDTH;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Crycheck {
     pub base: Base,
     anim: Anim,
@@ -125,6 +126,7 @@ impl Crycheck {
     }
 }
 
+#[typetag::serde]
 impl Obj for Crycheck {
     crate::obj_boilerplate!();
 

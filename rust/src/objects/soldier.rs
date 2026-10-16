@@ -40,6 +40,7 @@ const FIRE_DELAY: i32 = 4;
 const NUM_ROUNDS: i32 = 6;
 const ALARM_DELAY: i32 = 120;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Soldier {
     pub base: Base,
     anim: Anim,
@@ -73,6 +74,7 @@ impl Soldier {
     }
 }
 
+#[typetag::serde]
 impl Obj for Soldier {
     crate::obj_boilerplate!();
 
@@ -227,6 +229,7 @@ impl Obj for Soldier {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct BossSoldier {
     inner: Soldier,
 }
@@ -237,6 +240,7 @@ impl BossSoldier {
     }
 }
 
+#[typetag::serde]
 impl Obj for BossSoldier {
     fn base(&self) -> &Base {
         &self.inner.base

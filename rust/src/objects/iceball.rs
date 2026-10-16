@@ -7,6 +7,7 @@ use crate::icache;
 const X_SPEED: i32 = 1;
 const FRAME_DELAY: i32 = 4;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct IceBall {
     pub base: Base,
     anim: Anim,
@@ -40,6 +41,7 @@ impl IceBall {
     }
 }
 
+#[typetag::serde]
 impl Obj for IceBall {
     crate::obj_boilerplate!();
 

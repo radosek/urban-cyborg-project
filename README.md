@@ -39,8 +39,11 @@ see `.github/workflows/build.yml`).
     ./urban -f gamemaps/level11.map   # play one map
 
 - Alt/Cmd+Enter toggles fullscreen (`URBAN_FULLSCREEN=1` starts fullscreen).
-- Graphics (CONFIG → GRAPHICS, or in game): **F5** filter (PIXELS original / SMOOTH / SCALEX
-  Scale3x / HQX hq4x), **F6** CRT look, **F7** widescreen 16:9. Saved in `video.cfg`.
+- **ESC** opens the pause menu: RESUME / SAVE / LOAD / OPTIONS / RESTART / QUIT.
+- **F5** quick save, **F9** quick load, anywhere in a level. The game also autosaves at every
+  level start and checkpoint; **CONTINUE** on the main menu resumes the latest save.
+- Graphics (CONFIG → GRAPHICS, or in game): **F6** filter (PIXELS original / SMOOTH / SCALEX
+  Scale3x / HQX hq4x), **F7** CRT look, **F8** widescreen 16:9. Saved in `video.cfg`.
 - Keyboard by default: arrows, Ctrl fire, Space jump, Shift prev/next weapon, 1–7 weapons, P pause.
 - Gamepads (Xbox, PlayStation, Switch Pro, …) via SDL; choose GAMEPAD in CONFIG → controls.
 - Config, saves and highscores live in the per-user app data folder.
@@ -56,6 +59,7 @@ The C++ reference and the Rust port run with identical scripted input and random
     tools/menutest.sh         # main menu, highscores, credits, config
     tools/seqtest.sh          # intro; RUN=outtro / RUN=credits KEYPRESSES=999999 for the others
     tools/flitest.sh          # all 11 intro animations
+    tools/savestatetest.sh    # quick save mid-level, reload: identical afterwards (Rust only)
 
 These need the game data in `ref/data` and the C++ reference build:
 

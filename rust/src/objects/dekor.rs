@@ -3,6 +3,7 @@
 use crate::engine::*;
 use crate::icache;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Dekor {
     pub base: Base,
 }
@@ -26,6 +27,7 @@ impl Dekor {
     }
 }
 
+#[typetag::serde]
 impl Obj for Dekor {
     crate::obj_boilerplate!();
 

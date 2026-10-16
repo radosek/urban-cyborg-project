@@ -4,6 +4,7 @@ use super::explode::Explosion;
 use crate::engine::*;
 use crate::icache;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ExplosiveTile {
     pub base: Base,
     #[allow(dead_code)]
@@ -25,6 +26,7 @@ impl ExplosiveTile {
     }
 }
 
+#[typetag::serde]
 impl Obj for ExplosiveTile {
     crate::obj_boilerplate!();
 

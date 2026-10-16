@@ -70,6 +70,14 @@ impl ScoreBoard {
         }
     }
 
+    pub fn save_state(&self) -> [i32; 4] {
+        [self.score, self.tmp_score, self.boss_health, self.boss_max]
+    }
+
+    pub fn restore_state(&mut self, v: [i32; 4]) {
+        [self.score, self.tmp_score, self.boss_health, self.boss_max] = v;
+    }
+
     pub fn add_score(&mut self, s: i32) {
         self.score += s;
     }

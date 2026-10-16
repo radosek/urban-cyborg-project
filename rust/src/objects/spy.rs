@@ -3,6 +3,7 @@
 use crate::engine::*;
 use crate::icache;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Spy {
     pub base: Base,
     victim: i32,
@@ -34,6 +35,7 @@ impl Spy {
     }
 }
 
+#[typetag::serde]
 impl Obj for Spy {
     crate::obj_boilerplate!();
 

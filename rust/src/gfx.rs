@@ -1,6 +1,6 @@
 //! 8-bit indexed bitmaps and 6-bit VGA palettes, mirroring the Allegro 3 primitives the game uses.
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Rgb {
     pub r: u8,
     pub g: u8,

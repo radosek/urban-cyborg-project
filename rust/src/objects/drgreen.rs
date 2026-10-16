@@ -28,6 +28,7 @@ const STATE_WRITE: i32 = 10;
 
 const MAX_X_SPEED: i32 = 2;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct DrGreen {
     pub base: Base,
     anim: Anim,
@@ -53,6 +54,7 @@ impl DrGreen {
     }
 }
 
+#[typetag::serde]
 impl Obj for DrGreen {
     crate::obj_boilerplate!();
 

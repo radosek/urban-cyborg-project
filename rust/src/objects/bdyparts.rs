@@ -10,6 +10,7 @@ const Y_ACCEL: i32 = 1;
 const STATE_NONE: i32 = 0;
 const STATE_DESTROY: i32 = 1;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Bodyparts {
     pub base: Base,
     anim: Anim,
@@ -34,6 +35,7 @@ impl Bodyparts {
     }
 }
 
+#[typetag::serde]
 impl Obj for Bodyparts {
     crate::obj_boilerplate!();
 

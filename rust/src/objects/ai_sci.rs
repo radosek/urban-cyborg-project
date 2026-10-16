@@ -164,9 +164,12 @@ pub fn stand_on_feet(b: &mut Base) {
 #[macro_export]
 macro_rules! boss_with_card {
     ($boss:ident, $inner:ty) => {
+        #[derive(serde::Serialize, serde::Deserialize)]
         pub struct $boss {
             inner: $inner,
         }
+
+        #[typetag::serde]
 
         impl $crate::engine::Obj for $boss {
             fn base(&self) -> &$crate::engine::Base {

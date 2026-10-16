@@ -6,6 +6,7 @@ use crate::icache;
 
 const ACCEL_COUNTER: i32 = 3;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct AirGrenade {
     pub base: Base,
 }
@@ -30,6 +31,7 @@ impl AirGrenade {
     }
 }
 
+#[typetag::serde]
 impl Obj for AirGrenade {
     crate::obj_boilerplate!();
 

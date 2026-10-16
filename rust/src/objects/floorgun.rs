@@ -12,6 +12,7 @@ const STATE_FIRE: i32 = 0x01;
 const STATE_FIRING: i32 = 0x02;
 const FIRE_STRENGTH: i32 = 3;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct FloorGun {
     pub base: Base,
     anim: Anim,
@@ -39,6 +40,7 @@ impl FloorGun {
     }
 }
 
+#[typetag::serde]
 impl Obj for FloorGun {
     crate::obj_boilerplate!();
 

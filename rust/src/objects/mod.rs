@@ -64,6 +64,7 @@ pub mod water;
 use crate::engine::*;
 use crate::otypes::*;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum Spawn {
     Player(Box<player::Player>),
     Object(Box<dyn Obj>),

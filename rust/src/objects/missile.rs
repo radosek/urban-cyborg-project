@@ -7,6 +7,7 @@ use crate::icache;
 
 const FIRE_SAMPLE: &str = "samples/missile1.wav";
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Missile {
     pub base: Base,
     anim: Anim,
@@ -33,6 +34,7 @@ impl Missile {
     }
 }
 
+#[typetag::serde]
 impl Obj for Missile {
     crate::obj_boilerplate!();
 

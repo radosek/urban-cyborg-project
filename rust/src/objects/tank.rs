@@ -62,6 +62,7 @@ const AIFIRE: [(i32, i32); 7] = [
     (FIRE_STOP, 200),
 ];
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Tank {
     pub base: Base,
     wheel1: Option<ObjId>,
@@ -116,6 +117,7 @@ impl Tank {
     }
 }
 
+#[typetag::serde]
 impl Obj for Tank {
     crate::obj_boilerplate!();
 

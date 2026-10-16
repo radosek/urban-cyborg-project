@@ -30,6 +30,7 @@ const STATE_WRITING: i32 = 11;
 const MAX_X_SPEED: i32 = 2;
 const WRITE_DELAY: i32 = 30;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Scientist {
     pub base: Base,
     anim: Anim,
@@ -57,6 +58,7 @@ impl Scientist {
     }
 }
 
+#[typetag::serde]
 impl Obj for Scientist {
     crate::obj_boilerplate!();
 

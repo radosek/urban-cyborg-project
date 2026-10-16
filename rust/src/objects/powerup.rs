@@ -5,6 +5,7 @@ use crate::icache;
 
 const POWERUP_STRENGTH: i32 = 100;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Powerup {
     pub base: Base,
     type_: i32,
@@ -56,6 +57,7 @@ impl Powerup {
     }
 }
 
+#[typetag::serde]
 impl Obj for Powerup {
     crate::obj_boilerplate!();
 

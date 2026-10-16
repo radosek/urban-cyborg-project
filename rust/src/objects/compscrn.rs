@@ -4,6 +4,7 @@ use super::smallexp::SmallExplosion;
 use crate::engine::*;
 use crate::icache;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ComputerScreen {
     pub base: Base,
 }
@@ -25,6 +26,7 @@ impl ComputerScreen {
     }
 }
 
+#[typetag::serde]
 impl Obj for ComputerScreen {
     crate::obj_boilerplate!();
 

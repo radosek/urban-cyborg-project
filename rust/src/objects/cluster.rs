@@ -10,6 +10,7 @@ const FIRE_SAMPLE: &str = "samples/ex12.wav";
 const ACCEL_COUNTER: i32 = 3;
 const NUM_GRENADES: i32 = 10;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Cluster {
     pub base: Base,
 }
@@ -35,6 +36,7 @@ impl Cluster {
     }
 }
 
+#[typetag::serde]
 impl Obj for Cluster {
     crate::obj_boilerplate!();
 

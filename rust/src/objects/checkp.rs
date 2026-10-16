@@ -3,6 +3,7 @@
 use crate::engine::*;
 use crate::icache;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Checkpoint {
     pub base: Base,
 }
@@ -29,6 +30,7 @@ impl Checkpoint {
     }
 }
 
+#[typetag::serde]
 impl Obj for Checkpoint {
     crate::obj_boilerplate!();
 

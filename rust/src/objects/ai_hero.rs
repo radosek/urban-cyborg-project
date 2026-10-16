@@ -79,7 +79,7 @@ pub fn death_by_explosion(b: &Base, g: &mut Game) {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Rambo,
     Arnold,
@@ -134,6 +134,7 @@ const BOX_DISTANCE: i32 = 50;
 const FLAME_RANGE: i32 = 100;
 const FLAME_STRENGTH: i32 = 5;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 struct Cfg {
     dir: &'static str,
     shots: i32,
@@ -156,6 +157,7 @@ fn cfg(k: Kind) -> Cfg {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Hero {
     anim: Anim,
     kind: Kind,
@@ -663,6 +665,7 @@ fn shell(g: &mut Game, right: bool, x: i32, y: i32, z: i32) {
 #[macro_export]
 macro_rules! hero_objects {
     ($name:ident, $boss:ident, $kind:expr, $boss_score:expr, $boss_energy:expr) => {
+        #[derive(serde::Serialize, serde::Deserialize)]
         pub struct $name {
             pub base: $crate::engine::Base,
             ai: $crate::objects::ai_hero::Hero,
@@ -675,6 +678,8 @@ macro_rules! hero_objects {
             }
         }
 
+        #[typetag::serde]
+
         impl $crate::engine::Obj for $name {
             $crate::obj_boilerplate!();
             fn update(&mut self, g: &mut $crate::engine::Game) -> $crate::engine::Upd {
@@ -684,6 +689,8 @@ macro_rules! hero_objects {
                 self.ai.collision(&mut self.base, other, g)
             }
         }
+
+        #[derive(serde::Serialize, serde::Deserialize)]
 
         pub struct $boss {
             pub base: $crate::engine::Base,
@@ -698,6 +705,8 @@ macro_rules! hero_objects {
                 $boss { base, ai }
             }
         }
+
+        #[typetag::serde]
 
         impl $crate::engine::Obj for $boss {
             $crate::obj_boilerplate!();

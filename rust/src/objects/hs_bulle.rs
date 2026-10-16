@@ -7,6 +7,7 @@ use crate::objects::gnistor::Gnistor;
 const HS_SPEED: i32 = 7;
 const FIRE_SAMPLE: &str = "samples/gun2.wav";
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct HighSpeedBullet {
     pub base: Base,
 }
@@ -40,6 +41,7 @@ impl HighSpeedBullet {
     }
 }
 
+#[typetag::serde]
 impl Obj for HighSpeedBullet {
     crate::obj_boilerplate!();
 

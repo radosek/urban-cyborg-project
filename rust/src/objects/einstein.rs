@@ -31,6 +31,7 @@ const STATE_WRITING: i32 = 11;
 const MAX_X_SPEED: i32 = 2;
 const WRITE_DELAY: i32 = 30;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Einstein {
     pub base: Base,
     anim: Anim,
@@ -58,6 +59,7 @@ impl Einstein {
     }
 }
 
+#[typetag::serde]
 impl Obj for Einstein {
     crate::obj_boilerplate!();
 

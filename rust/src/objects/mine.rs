@@ -8,6 +8,7 @@ const STRENGTH_MINE: i32 = 100;
 const STATE_NONE: i32 = 0x00;
 const STATE_EXPLODE: i32 = 0x01;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Mine {
     pub base: Base,
 }
@@ -36,6 +37,7 @@ impl Mine {
     }
 }
 
+#[typetag::serde]
 impl Obj for Mine {
     crate::obj_boilerplate!();
 

@@ -4,6 +4,7 @@ use super::bubble::Bubble;
 use crate::engine::*;
 use crate::{icache, rng};
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct BubbleMaker {
     pub base: Base,
 }
@@ -24,6 +25,7 @@ impl BubbleMaker {
     }
 }
 
+#[typetag::serde]
 impl Obj for BubbleMaker {
     crate::obj_boilerplate!();
 

@@ -8,6 +8,7 @@ const X_SPEED: i32 = 1;
 const FRAME_DELAY: i32 = 2;
 const LIFE_FRAMES: i32 = 9;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Beam {
     pub base: Base,
     anim: Anim,
@@ -38,6 +39,7 @@ impl Beam {
     }
 }
 
+#[typetag::serde]
 impl Obj for Beam {
     crate::obj_boilerplate!();
 

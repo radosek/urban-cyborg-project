@@ -5,6 +5,7 @@ use crate::icache;
 
 const PLASMA_SPEED: i32 = 10;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Plasma {
     pub base: Base,
 }
@@ -29,6 +30,7 @@ impl Plasma {
     }
 }
 
+#[typetag::serde]
 impl Obj for Plasma {
     crate::obj_boilerplate!();
 

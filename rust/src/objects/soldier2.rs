@@ -48,6 +48,7 @@ const FOOT_LEFT: i32 = 20;
 const FOOT_WIDTH: i32 = 22;
 const FOOT_RIGHT: i32 = FOOT_LEFT + FOOT_WIDTH;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Soldier2 {
     pub base: Base,
     anim: Anim,
@@ -366,6 +367,7 @@ impl Soldier2 {
     }
 }
 
+#[typetag::serde]
 impl Obj for Soldier2 {
     crate::obj_boilerplate!();
 
@@ -382,6 +384,7 @@ impl Obj for Soldier2 {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct BossSoldier2 {
     inner: Soldier2,
 }
@@ -395,6 +398,7 @@ impl BossSoldier2 {
     }
 }
 
+#[typetag::serde]
 impl Obj for BossSoldier2 {
     fn base(&self) -> &Base {
         &self.inner.base

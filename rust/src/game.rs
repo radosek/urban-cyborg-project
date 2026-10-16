@@ -250,23 +250,50 @@ pub fn get_level_name(text: &mut String) -> bool {
 
 /// NewGame(slot): slot 0 starts from level 1, otherwise resumes that save slot.
 pub fn new_game(g: &mut Game, slot: usize) -> i32 {
-    let mut name = String::new();
-    let mut level: i32 = 1;
-
     g.new_game();
-    display_level_info(level);
-
-    let mut slots = load_slots();
+    // The original shows the level 1 screen here even when a later slot is loaded.
+    display_level_info(1);
+    let slots = load_slots();
     let mut pdat = DEFAULT_PDATA;
+    let mut level: i32 = 1;
     if slot != 0 && slots[slot - 1].level != 0 {
         pdat = slots[slot - 1].dat;
         level = slots[slot - 1].level.clamp(1, NUM_LEVELS);
     }
+    run_campaign(g, level, pdat, None)
+}
 
+/// Main menu CONTINUE: resumes the most recent quick save or autosave.
+pub fn continue_game(g: &mut Game) -> bool {
+    let Some(path) = crate::saves::latest() else { return false };
+    let Ok(st) = crate::engine::SaveState::read(&path) else { return false };
+    g.new_game();
+    let level = if st.level > 0 { st.level } else { 1 };
+    let pdat = st.level_start;
+    run_campaign(g, level, pdat, Some(st));
+    true
+}
+
+/// The level sequence (game.cc NewGame), optionally starting from a mid-level save.
+fn run_campaign(g: &mut Game, mut level: i32, mut pdat: PlayerData, mut resume: Option<crate::engine::SaveState>) -> i32 {
+    let mut name = String::new();
+    let mut slots = load_slots();
     let mut map_name: String = MAPS[(level - 1) as usize].to_string();
     let mut quit = false;
     while !quit {
-        let r = g.play_level(&map_name, Some(&mut pdat), config::get().ctrl_type);
+        g.campaign_level = level;
+        let start_pdat = pdat;
+        let r = match resume.take() {
+            Some(st) => {
+                map_name = st.map_name.clone();
+                g.play_saved(st, &mut pdat)
+            }
+            None => g.play_level(&map_name, Some(&mut pdat), config::get().ctrl_type),
+        };
+        // A quick load can switch to another campaign level.
+        if g.campaign_level > 0 {
+            level = g.campaign_level;
+        }
         match r {
             -1 => {
                 sound::play_sfx("samples/haha.wav");
@@ -277,6 +304,13 @@ pub fn new_game(g: &mut Game, slot: usize) -> i32 {
             0 => {
                 sys::fade_out(5);
                 quit = true;
+            }
+            3 => {
+                // RESTART LEVEL from the pause menu: same map, the player data it began with.
+                pdat = g.level_start;
+                let _ = start_pdat;
+                map_name = g.map_name.clone();
+                sys::fade_out(5);
             }
             1 | 2 => {
                 let mut extra = false;

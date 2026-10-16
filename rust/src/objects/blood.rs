@@ -6,6 +6,7 @@ use crate::{icache, rng};
 const MAX_Y_SPEED: i32 = 8;
 const Y_ACCEL: i32 = 1;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Blood {
     pub base: Base,
 }
@@ -28,6 +29,7 @@ impl Blood {
     }
 }
 
+#[typetag::serde]
 impl Obj for Blood {
     crate::obj_boilerplate!();
 

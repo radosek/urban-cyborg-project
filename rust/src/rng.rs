@@ -12,6 +12,14 @@ pub fn calls() -> u64 {
     CALLS.with(|c| c.get())
 }
 
+pub fn state() -> u64 {
+    STATE.with(|c| c.get())
+}
+
+pub fn set_state(s: u64) {
+    STATE.with(|c| c.set(s));
+}
+
 pub fn seed(s: u64) {
     STATE.with(|c| c.set(s | 1));
 }

@@ -19,6 +19,7 @@ const STRIKE_END: i32 = 20;
 const STRIKE_SAMPLE: &str = "samples/hellfire.wav";
 const WARNING_SAMPLE: &str = "samples/airnuke.wav";
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Airstrike {
     pub base: Base,
 }
@@ -41,6 +42,7 @@ impl Airstrike {
     }
 }
 
+#[typetag::serde]
 impl Obj for Airstrike {
     crate::obj_boilerplate!();
 

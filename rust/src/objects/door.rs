@@ -8,6 +8,7 @@ use crate::sound;
 
 const FRAME_DELAY: i32 = 5;
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Door {
     pub base: Base,
     card: i32,
@@ -37,6 +38,7 @@ impl Door {
     }
 }
 
+#[typetag::serde]
 impl Obj for Door {
     crate::obj_boilerplate!();
 
