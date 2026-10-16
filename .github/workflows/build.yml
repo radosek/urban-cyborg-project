@@ -36,6 +36,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake libasound2-dev libpulse-dev libx11-dev libxext-dev libxrandr-dev \
             libxcursor-dev libxi-dev libxss-dev libwayland-dev libxkbcommon-dev libgl1-mesa-dev libudev-dev
+      - name: Windows build environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Use Ninja for CMake on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          choco install ninja -y --no-progress
+          echo "CMAKE_GENERATOR=Ninja" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust
