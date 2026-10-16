@@ -3,7 +3,7 @@ name: winget-validate
 on:
   workflow_dispatch:
   push:
-    paths: ['packaging/winget/**']
+    paths: ['packaging/winget/**', '.github/workflows/winget.yml']
 
 jobs:
   validate:
