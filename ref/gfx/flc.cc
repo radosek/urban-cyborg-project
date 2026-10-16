@@ -129,6 +129,14 @@ BITMAP *flc_bitmap = NULL;
 BITMAP *target_bitmap = NULL;
 volatile unsigned long flc_counter = 0;
 int (*flc_callback)() = NULL;
+/* Rows changed in the current frame; like Allegro's player only these are copied to the target. */
+static int flc_dirty_from = 1 << 30, flc_dirty_to = -1;
+static void flc_dirty(int from, int to) {
+	if (from < flc_dirty_from)
+		flc_dirty_from = from;
+	if (to > flc_dirty_to)
+		flc_dirty_to = to;
+}
 
 #define FRAME_SIZE (flc_h.width * flc_h.height)
 #define FRAME_WIDTH (flc_h.width)
@@ -248,6 +256,7 @@ static int read_flc_palette(int type) {
 }
 
 static int read_flc_brun() {
+	flc_dirty(0, 239);
 	int i;
         int x;
         int cw = 0;
@@ -307,6 +316,7 @@ int read_flc_ss2() {
                         PRINTF("Return: %d\n", ret);
 #endif
                 }
+                flc_dirty(y, y);
                 x = 0;
                 while (num_packets-- > 0) {
                 	read_flc_data(&temp, 1);
@@ -341,7 +351,8 @@ static int next_frame() {
                			read_flc_palette(frame_h.type);
 	                        break;
 			case FLI_BLACK:
-               			clear(screen);
+               			clear(flc_bitmap);
+				flc_dirty(0, 239);
                        		break;
 	                case FLI_COPY: //st?ds ej
        	                	break;
@@ -369,9 +380,14 @@ static void do_flc_play(int loop) {
 
         	for (i = 0;i < flc_h.n_frames;i++) {
                 	flc_counter = 0;
+			if (i == 0)
+				clear(flc_bitmap);
         		read_flc_data(&chunk, sizeof(struct frame_chunk));
         	        next_frame();
-			blit(flc_bitmap, target_bitmap, 0, 0, 0, 0, 320, 240);
+			if (flc_dirty_from <= flc_dirty_to)
+				blit(flc_bitmap, target_bitmap, 0, flc_dirty_from, 0, flc_dirty_from, 320, 1 + flc_dirty_to - flc_dirty_from);
+			flc_dirty_from = 1 << 30;
+			flc_dirty_to = -1;
 
                         if (flc_callback != NULL) {
                         	if ((ret = flc_callback()))

@@ -44,6 +44,7 @@
 #include "icache.h"
 #include "game.h"
 #include "datfile.h"
+#include "outtro.h"
 #include "highscor.h"
 #include "intro.h"
 #include "config.h"
@@ -338,6 +339,16 @@ M”jliga v„xlar:
 
 	if (getenv("URBAN_FLI_TEST"))
 		fli_test(getenv("URBAN_FLI_TEST"));
+	/* Test hook (tools/seqtest.sh): run one sequence directly. */
+	if (getenv("URBAN_RUN")) {
+		if (!strcmp(getenv("URBAN_RUN"), "outtro")) {
+			Outtro *o = new Outtro;
+			o->RunOuttro();
+			delete o;
+		} else if (!strcmp(getenv("URBAN_RUN"), "credits"))
+			showcredits();
+		exit(0);
+	}
 
         if (IS_INTRO_ON) {
 		// Run intro

@@ -303,7 +303,9 @@ pub fn init() {
         last_auto_tick: u64::MAX,
         audio,
         mixer,
-        replay: Replay::load().or_else(|| std::env::var_os("URBAN_MENU_KEYS").map(|_| Replay::empty())),
+        replay: Replay::load()
+            .or_else(|| std::env::var_os("URBAN_MENU_KEYS").map(|_| Replay::empty()))
+            .or_else(|| std::env::var_os("URBAN_KEYPRESSES").map(|_| Replay::empty())),
         menu_keys: MenuKeys::load(),
     };
     SYS.with(|s| *s.borrow_mut() = Some(sys));
@@ -618,14 +620,68 @@ pub fn keyboard_reset() {
     with(|s| s.keys = [false; 128]);
 }
 
+/// Sequence test (URBAN_KEYPRESSES="1,5"): keypressed() is true only on those call numbers,
+/// rest() fingerprints the screen, and the first readkey() ends the run (mirrors the C++ shim).
+struct Seq {
+    keypressed_calls: u64,
+    rest_calls: u64,
+    want: Vec<u64>,
+    trace: Option<std::fs::File>,
+}
+
+thread_local! {
+    static SEQ: RefCell<Option<Seq>> = RefCell::new(std::env::var("URBAN_KEYPRESSES").ok().map(|v| Seq {
+        keypressed_calls: 0,
+        rest_calls: 0,
+        want: v.split(',').filter_map(|t| t.trim().parse().ok()).collect(),
+        trace: std::env::var_os("URBAN_SEQ_TRACE").and_then(|p| std::fs::File::create(p).ok()),
+    }));
+}
+
+fn seq_active() -> bool {
+    SEQ.with(|q| q.borrow().is_some())
+}
+
+fn seq_rest_tick() {
+    use std::io::Write;
+    if !seq_active() {
+        return;
+    }
+    let h = current_screen_hash();
+    SEQ.with(|q| {
+        let mut q = q.borrow_mut();
+        let q = q.as_mut().unwrap();
+        if let Some(t) = q.trace.as_mut() {
+            let _ = writeln!(t, "{} {:016x}", q.rest_calls, h);
+        }
+        if std::env::var("URBAN_DUMP").ok().and_then(|v| v.parse::<u64>().ok()) == Some(q.rest_calls) {
+            if let Some(d) = std::env::var_os("URBAN_DUMP_DIR") {
+                dump_screen(&PathBuf::from(d).join(format!("rust_{:06}.bmp", q.rest_calls)));
+            }
+        }
+        q.rest_calls += 1;
+    });
+}
+
 pub fn keypressed() -> bool {
     present(false);
     pump();
+    if let Some(r) = SEQ.with(|q| {
+        q.borrow_mut().as_mut().map(|q| {
+            q.keypressed_calls += 1;
+            q.want.contains(&q.keypressed_calls)
+        })
+    }) {
+        return r;
+    }
     with(|s| s.menu_keys.is_some() || !s.keybuf.is_empty())
 }
 
 /// Blocks for a key; returns `(scancode << 8) | ascii` like Allegro.
 pub fn readkey() -> i32 {
+    if seq_active() {
+        std::process::exit(0);
+    }
     if let Some(k) = with(|s| {
         use std::io::Write;
         let h = screen_hash(s);
@@ -665,6 +721,7 @@ pub fn simulate_keypress(k: i32) {
 // Timing
 
 pub fn rest(ms: u64) {
+    seq_rest_tick();
     present(false);
     pump();
     if !replaying() {

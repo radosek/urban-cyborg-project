@@ -445,6 +445,8 @@ int allegro_init() {
 	atexit(allegro_exit);
 	if (replay)
 		replay_load();
+	if (getenv("URBAN_KEYPRESSES"))
+		replay = 1;
 	if (getenv("URBAN_MENU_KEYS")) {
 		replay = 1;
 		menu_load();
@@ -536,7 +538,10 @@ void remove_int(void (*proc)()) {
 	}
 }
 
+void seq_rest_tick();
+
 void rest(long ms) {
+	seq_rest_tick();
 	present(0);
 	pump_events();
 	if (!replay)
@@ -962,15 +967,53 @@ uint64_t screen_hash() {
 	return h;
 }
 
+/* Sequence test (URBAN_KEYPRESSES="1,5"): keypressed() is true only on those call numbers,
+   rest() fingerprints the screen, and the first readkey() ends the run. */
+static long keypressed_calls, rest_calls;
+static FILE *seq_trace;
+
+static int seq_keypress() {
+	keypressed_calls++;
+	char buf[1024];
+	snprintf(buf, sizeof(buf), ",%s,", getenv("URBAN_KEYPRESSES"));
+	char want[32];
+	snprintf(want, sizeof(want), ",%ld,", keypressed_calls);
+	return strstr(buf, want) != NULL;
+}
+
+void seq_rest_tick() {
+	if (!getenv("URBAN_KEYPRESSES"))
+		return;
+	if (!seq_trace && getenv("URBAN_SEQ_TRACE"))
+		seq_trace = fopen(getenv("URBAN_SEQ_TRACE"), "w");
+	if (seq_trace) {
+		fprintf(seq_trace, "%ld %016llx\n", rest_calls, (unsigned long long)screen_hash());
+		fflush(seq_trace);
+	}
+	if (getenv("URBAN_DUMP") && atol(getenv("URBAN_DUMP")) == rest_calls && getenv("URBAN_DUMP_DIR")) {
+		char path[4096];
+		snprintf(path, sizeof(path), "%s/cpp_%06ld.bmp", getenv("URBAN_DUMP_DIR"), rest_calls);
+		write_bmp8(path);
+	}
+	rest_calls++;
+}
+
 int keypressed() {
 	present(0);
 	pump_events();
+	if (getenv("URBAN_KEYPRESSES"))
+		return seq_keypress();
 	if (num_menu_keys >= 0)
 		return 1;
 	return keybuf_head != keybuf_tail;
 }
 
 int readkey() {
+	if (getenv("URBAN_KEYPRESSES")) {
+		if (seq_trace)
+			fclose(seq_trace);
+		exit(0);
+	}
 	if (num_menu_keys >= 0) {
 		if (menu_trace) {
 			fprintf(menu_trace, "%d %016llx\n", cur_menu_key, (unsigned long long)screen_hash());

@@ -53,6 +53,15 @@ fn main() {
     if let Ok(name) = std::env::var("URBAN_FLI_TEST") {
         fli_test(&name);
     }
+    // Test hook (tools/seqtest.sh): run one sequence directly.
+    if let Ok(what) = std::env::var("URBAN_RUN") {
+        match what.as_str() {
+            "outtro" => outtro::run_outtro(),
+            "credits" => credits::show_credits(),
+            _ => {}
+        }
+        std::process::exit(0);
+    }
     sound::set_music_volume(config::get().music_vol);
     let mut g = engine::Game::new();
     if let Some(l) = level {
