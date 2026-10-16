@@ -231,6 +231,26 @@ fn start_controls() {
     config::save();
 }
 
+/// Display upgrades: filter, CRT, widescreen, fullscreen. ENTER on a line changes it.
+fn graphics_menu() {
+    let mut pos = 1;
+    loop {
+        let v = sys::video();
+        let on = |b: bool| if b { "ON" } else { "OFF" };
+        let text = format!("{}\nCRT {}\nWIDE {}\nFULL {}\nBACK", v.filter.name(), on(v.crt), on(v.widescreen), on(v.fullscreen));
+        pos = do_menu(&text, 5, pos);
+        let mut c = v;
+        match pos {
+            1 => c.filter = c.filter.next(),
+            2 => c.crt = !c.crt,
+            3 => c.widescreen = !c.widescreen,
+            4 => c.fullscreen = !c.fullscreen,
+            _ => break,
+        }
+        sys::set_video(c);
+    }
+}
+
 /// Config::Start
 pub fn start() {
     let mut pos = 1;
@@ -239,7 +259,9 @@ pub fn start() {
         match pos {
             0 | 5 => break,
             1 => start_controls(),
-            2 => change_gfx_quality(),
+            // Replay tests compare menus with the C++ original, which only had NORMAL/HIGH here.
+            2 if sys::replaying() => change_gfx_quality(),
+            2 => graphics_menu(),
             3 => change_music_vol(),
             4 => change_sfx_vol(),
             _ => {}

@@ -35,8 +35,11 @@ pub struct Joy {
 
 struct Display {
     canvas: Canvas<Window>,
-    _creator: &'static TextureCreator<WindowContext>,
+    creator: &'static TextureCreator<WindowContext>,
     texture: Texture<'static>,
+    tex_w: u32,
+    tex_h: u32,
+    linear: bool,
 }
 
 fn open_display(video: &sdl2::VideoSubsystem) -> Display {
@@ -47,7 +50,7 @@ fn open_display(video: &sdl2::VideoSubsystem) -> Display {
         .allow_highdpi()
         .build()
         .expect("SDL window");
-    if std::env::var_os("URBAN_FULLSCREEN").is_some() {
+    if crate::video::VideoConf::load().fullscreen {
         let _ = window.set_fullscreen(FullscreenType::Desktop);
     }
     let mut canvas = window.into_canvas().accelerated().build().expect("SDL renderer");
@@ -57,7 +60,7 @@ fn open_display(video: &sdl2::VideoSubsystem) -> Display {
     let texture = creator
         .create_texture_streaming(PixelFormatEnum::ARGB8888, SCREEN_W as u32, SCREEN_H as u32)
         .expect("SDL texture");
-    Display { canvas, _creator: creator, texture }
+    Display { canvas, creator, texture, tex_w: SCREEN_W as u32, tex_h: SCREEN_H as u32, linear: false }
 }
 
 struct Sys {
@@ -72,7 +75,13 @@ struct Sys {
     screen: Bitmap,
     pal: Palette,
     pal32: [u32; 256],
-    argb: Vec<u8>,
+    video: crate::video::VideoConf,
+    crt: Option<crate::video::Crt>,
+    buf_a: Vec<u32>,
+    buf_b: Vec<u32>,
+    buf_c: Vec<u32>,
+    /// One-shot capture of the final filtered frame (test/screenshot hook).
+    rgb_shot: Option<PathBuf>,
     keys: [bool; 128],
     keybuf: VecDeque<i32>,
     joy: Joy,
@@ -219,6 +228,11 @@ fn replay_tick(s: &mut Sys) {
     if let Some(t) = r.trace.as_mut() {
         let _ = writeln!(t, "{} {:016x} {}", r.frame, h, crate::rng::calls());
     }
+    if std::env::var("URBAN_SHOT_FRAME").ok().and_then(|v| v.parse::<u64>().ok()) == Some(r.frame) {
+        if let Some(d) = &r.dump_dir {
+            s.rgb_shot = Some(d.join(format!("final_{:06}.bmp", r.frame)));
+        }
+    }
     if Some(r.frame) == r.dump {
         if let Some(d) = &r.dump_dir {
             write_bmp(&d.join(format!("rust_{:06}.bmp", r.frame)), &s.screen, &s.pal);
@@ -289,7 +303,12 @@ pub fn init() {
         screen: Bitmap::new(SCREEN_W, SCREEN_H),
         pal: BLACK_PALETTE,
         pal32: [0xff000000; 256],
-        argb: vec![0; (SCREEN_W * SCREEN_H * 4) as usize],
+        video: crate::video::VideoConf::load(),
+        crt: None,
+        buf_a: Vec::new(),
+        buf_b: Vec::new(),
+        buf_c: Vec::new(),
+        rgb_shot: None,
         keys: [false; 128],
         keybuf: VecDeque::new(),
         joy: Joy::default(),
@@ -422,14 +441,8 @@ pub fn present(force: bool) {
             return;
         }
         s.last_present = now;
-        for (i, &c) in s.screen.data.iter().enumerate() {
-            s.argb[i * 4..i * 4 + 4].copy_from_slice(&s.pal32[c as usize].to_le_bytes());
-        }
-        if let Some(d) = s.display.as_mut() {
-            d.texture.update(None, &s.argb, (SCREEN_W * 4) as usize).ok();
-            d.canvas.clear();
-            d.canvas.copy(&d.texture, None, None).ok();
-            d.canvas.present();
+        if s.display.is_some() || s.rgb_shot.is_some() {
+            render(s);
         }
         if let Some(dir) = &s.shot_dir {
             if now.duration_since(s.last_shot) >= Duration::from_secs(1) {
@@ -440,6 +453,130 @@ pub fn present(force: bool) {
             }
         }
     });
+}
+
+/// Palette lookup, optional upscaling filter and CRT pass, then upload and present.
+/// This is the single place where the 8-bit game frame becomes pixels on screen.
+fn render(s: &mut Sys) {
+    use crate::video::{self, Filter};
+    let (w, h) = (s.screen.w as usize, s.screen.h as usize);
+    s.buf_a.resize(w * h, 0);
+    for (o, &c) in s.buf_a.iter_mut().zip(s.screen.data.iter()) {
+        *o = s.pal32[c as usize];
+    }
+    let v = s.video;
+    let n = v.scale();
+    let (ow, oh) = (w * n, h * n);
+    let mut out: &[u32] = &s.buf_a;
+    if n > 1 {
+        s.buf_b.resize(ow * oh, 0);
+        match v.filter {
+            Filter::Hqx => hqx::hq4x(&s.buf_a, &mut s.buf_b, w as u32, h as u32),
+            Filter::ScaleX => video::scale3x(&s.buf_a, w, h, &mut s.buf_b),
+            _ => video::nearest(&s.buf_a, w, h, n, &mut s.buf_b),
+        }
+        out = &s.buf_b;
+    }
+    if v.crt {
+        if !s.crt.as_ref().map(|c| c.fits(ow, oh, n)).unwrap_or(false) {
+            s.crt = Some(video::Crt::new(ow, oh, n));
+        }
+        s.buf_c.resize(ow * oh, 0);
+        s.crt.as_ref().unwrap().apply(out, &mut s.buf_c);
+        out = &s.buf_c;
+    }
+    let linear = matches!(v.filter, Filter::Smooth | Filter::Hqx) || v.crt;
+    if let Some(path) = s.rgb_shot.take() {
+        write_bmp32(&path, out, ow, oh);
+    }
+    let Some(d) = s.display.as_mut() else { return };
+    if d.tex_w != ow as u32 || d.tex_h != oh as u32 || d.linear != linear {
+        if let Ok(mut t) = d.creator.create_texture_streaming(PixelFormatEnum::ARGB8888, ow as u32, oh as u32) {
+            t.set_scale_mode(if linear { sdl2::render::ScaleMode::Linear } else { sdl2::render::ScaleMode::Nearest });
+            d.texture = t;
+            d.tex_w = ow as u32;
+            d.tex_h = oh as u32;
+            d.linear = linear;
+        }
+    }
+    let (lw, lh) = d.canvas.logical_size();
+    if lw != w as u32 || lh != h as u32 {
+        d.canvas.set_logical_size(w as u32, h as u32).ok();
+    }
+    d.canvas.set_integer_scale(!linear).ok();
+    d.texture.update(None, bytemuck::cast_slice(out), ow * 4).ok();
+    d.canvas.clear();
+    d.canvas.copy(&d.texture, None, None).ok();
+    d.canvas.present();
+}
+
+/// Current display settings.
+pub fn video() -> crate::video::VideoConf {
+    with(|s| s.video)
+}
+
+/// Applies and saves display settings.
+pub fn set_video(c: crate::video::VideoConf) {
+    with(|s| {
+        if let Some(d) = s.display.as_mut() {
+            let w = d.canvas.window_mut();
+            let want = if c.fullscreen { FullscreenType::Desktop } else { FullscreenType::Off };
+            if w.fullscreen_state() != want {
+                let _ = w.set_fullscreen(want);
+            }
+        }
+        s.video = c;
+    });
+    c.save();
+    present(true);
+}
+
+/// Width the game view should use: 427 in widescreen, else the original 320.
+/// Replay tests always use the original width.
+pub fn gameplay_width() -> i32 {
+    let tests_allow = std::env::var_os("URBAN_TEST_VIDEO").is_some();
+    with(|s| if s.video.widescreen && (s.replay.is_none() || tests_allow) { crate::video::WIDE_W } else { SCREEN_W })
+}
+
+/// Resizes the visible screen (menus use 320, widescreen gameplay 427).
+pub fn set_screen_width(w: i32) {
+    with(|s| {
+        if s.screen.w != w {
+            s.screen = Bitmap::new(w, SCREEN_H);
+        }
+    });
+}
+
+pub fn screen_width() -> i32 {
+    with(|s| s.screen.w)
+}
+
+/// Requests that the next presented frame is saved after filters/CRT (24-bit BMP).
+pub fn capture_next_frame(path: PathBuf) {
+    with(|s| s.rgb_shot = Some(path));
+}
+
+fn write_bmp32(path: &std::path::Path, px: &[u32], w: usize, h: usize) {
+    let row = (w * 3 + 3) & !3;
+    let size = 54 + row * h;
+    let mut out = Vec::with_capacity(size);
+    out.extend_from_slice(b"BM");
+    out.extend_from_slice(&(size as u32).to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes());
+    out.extend_from_slice(&54u32.to_le_bytes());
+    out.extend_from_slice(&40u32.to_le_bytes());
+    out.extend_from_slice(&(w as i32).to_le_bytes());
+    out.extend_from_slice(&(h as i32).to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&24u16.to_le_bytes());
+    out.extend_from_slice(&[0u8; 24]);
+    for y in (0..h).rev() {
+        for &c in &px[y * w..(y + 1) * w] {
+            out.extend_from_slice(&[c as u8, (c >> 8) as u8, (c >> 16) as u8]);
+        }
+        out.resize(out.len() + row - w * 3, 0);
+    }
+    let _ = std::fs::write(path, out);
 }
 
 fn write_bmp(path: &std::path::Path, b: &Bitmap, pal: &Palette) {
@@ -512,9 +649,18 @@ fn ascii_for(k: Keycode, m: Mod) -> i32 {
     }
 }
 
+enum VideoKey {
+    Fullscreen,
+    Filter,
+    Crt,
+    Widescreen,
+}
+
 /// Processes window/input events. Called implicitly by every waiting function.
+/// F5 cycles the filter, F6 toggles CRT, F7 widescreen, Alt/Cmd+Enter fullscreen.
 pub fn pump() {
     let mut reopen = false;
+    let mut video_change: Option<VideoKey> = None;
     let quit = with(|s| {
         let mut quit = false;
         let evs: Vec<Event> = s.events.poll_iter().collect();
@@ -524,12 +670,18 @@ pub fn pump() {
                 Event::KeyDown { .. } | Event::KeyUp { .. } if s.replay.is_some() => {}
                 Event::KeyDown { scancode: Some(sc), keycode, keymod, repeat, .. } => {
                     if sc == Scancode::Return && keymod.intersects(Mod::LALTMOD | Mod::RALTMOD | Mod::LGUIMOD | Mod::RGUIMOD) {
-                        if let (false, Some(d)) = (repeat, s.display.as_mut()) {
-                            let w = d.canvas.window_mut();
-                            let next = if w.fullscreen_state() == FullscreenType::Off { FullscreenType::Desktop } else { FullscreenType::Off };
-                            let _ = w.set_fullscreen(next);
+                        if !repeat {
+                            video_change = Some(VideoKey::Fullscreen);
                         }
                         continue;
+                    }
+                    if !repeat {
+                        match sc {
+                            Scancode::F5 => video_change = Some(VideoKey::Filter),
+                            Scancode::F6 => video_change = Some(VideoKey::Crt),
+                            Scancode::F7 => video_change = Some(VideoKey::Widescreen),
+                            _ => {}
+                        }
                     }
                     let k = sdl_to_allegro(sc);
                     if k != 0 {
@@ -586,6 +738,16 @@ pub fn pump() {
     });
     if reopen {
         open_pad();
+    }
+    if let Some(k) = video_change {
+        let mut c = video();
+        match k {
+            VideoKey::Fullscreen => c.fullscreen = !c.fullscreen,
+            VideoKey::Filter => c.filter = c.filter.next(),
+            VideoKey::Crt => c.crt = !c.crt,
+            VideoKey::Widescreen => c.widescreen = !c.widescreen,
+        }
+        set_video(c);
     }
     if quit {
         std::process::exit(0);

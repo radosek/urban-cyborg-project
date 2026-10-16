@@ -7,7 +7,9 @@ license = "GPL-2.0-or-later"
 repository = "https://github.com/radosek/urban-cyborg-project"
 
 [dependencies]
+bytemuck = "1"
 hound = "3.5"
+hqx = "0.1"
 sdl2 = { version = "0.38", features = ["bundled", "static-link"] }
 xmrs = "0.15"
 xmrsplayer = "0.15"

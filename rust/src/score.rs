@@ -33,7 +33,8 @@ impl ScoreBoard {
         }
     }
 
-    pub fn display(&mut self, bmp: &mut Bitmap, p: &Player) {
+    /// Draws the HUD; `ox` shifts it horizontally (centred in widescreen).
+    pub fn display(&mut self, bmp: &mut Bitmap, p: &Player, ox: i32) {
         if self.score - 99 > self.tmp_score {
             self.tmp_score += 99;
         }
@@ -44,28 +45,28 @@ impl ScoreBoard {
             self.tmp_score += 1;
         }
         let energy = p.base().energy;
-        bmp.rectfill(26 + 44 * energy / 300, 23, 27 + 44, 34, 19);
-        bmp.rectfill(26, 23, 27 + 44 * energy / 300, 34, 36);
-        gfx::draw(bmp, &self.board, 0, 0);
-        self.fnt.print(&format!("Score:{:6}", self.tmp_score), 212, 10, bmp);
+        bmp.rectfill(ox + 26 + 44 * energy / 300, 23, ox + 27 + 44, 34, 19);
+        bmp.rectfill(ox + 26, 23, ox + 27 + 44 * energy / 300, 34, 36);
+        gfx::draw(bmp, &self.board, ox, 0);
+        self.fnt.print(&format!("Score:{:6}", self.tmp_score), ox + 212, 10, bmp);
         for (card, img, x) in [(CARD_BLUE, 0, 237), (CARD_GREEN, 1, 212), (CARD_RED, 2, 262)] {
             if p.have_card(card) {
                 let c = &self.cards[img];
-                gfx::blit(c, bmp, 0, 0, x, 40, c.w, c.h);
+                gfx::blit(c, bmp, 0, 0, ox + x, 40, c.w, c.h);
             }
         }
-        self.fnt.print(&p.lives().to_string(), 32, 40, bmp);
+        self.fnt.print(&p.lives().to_string(), ox + 32, 40, bmp);
         let ammo = p.ammo();
-        self.fnt.print(&if ammo < 0 { "Inf".to_string() } else { ammo.to_string() }, 27, 4, bmp);
+        self.fnt.print(&if ammo < 0 { "Inf".to_string() } else { ammo.to_string() }, ox + 27, 4, bmp);
         // Clamped: the original indexed past the 12 faces for energy outside 0..=300.
         let mut head = (10 * (300 - energy) / 300).clamp(0, 10) as usize;
         if p.base().is_immortal() {
             head = 11;
         }
-        gfx::draw(bmp, &self.face[head], SCREEN_WIDTH / 2 - 27, 8);
+        gfx::draw(bmp, &self.face[head], ox + SCREEN_WIDTH / 2 - 27, 8);
         if self.boss_max > 0 {
-            bmp.rectfill(20 - 1, 65 - 1, 20 + BOSSHEALTH_WIDTH + 1, 65 + 7 + 1, 0);
-            bmp.rectfill(20, 65, 20 + self.boss_health.max(0) * BOSSHEALTH_WIDTH / self.boss_max, 65 + 7, 36);
+            bmp.rectfill(ox + 20 - 1, 65 - 1, ox + 20 + BOSSHEALTH_WIDTH + 1, 65 + 7 + 1, 0);
+            bmp.rectfill(ox + 20, 65, ox + 20 + self.boss_health.max(0) * BOSSHEALTH_WIDTH / self.boss_max, 65 + 7, 36);
         }
     }
 

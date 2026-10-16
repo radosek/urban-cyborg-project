@@ -23,6 +23,7 @@ mod score;
 mod sound;
 mod sys;
 mod text;
+mod video;
 mod tiles;
 
 fn main() {

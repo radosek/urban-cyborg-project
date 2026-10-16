@@ -945,6 +945,7 @@ impl Game {
         let bgoffsetx = bgstartx * BG_TILE_WIDTH - self.map_x;
         let bgoffsety = bgstarty * BG_TILE_HEIGHT - self.map_y;
 
+        self.apply_view_width();
         self.map.update_pal();
         self.update_lightening();
         sys::pump();
@@ -968,7 +969,7 @@ impl Game {
         self.fps_n2 += 1;
 
         if flags::background_on() {
-            for i in bgstartx..bgstartx + 4 {
+            for i in bgstartx..bgstartx + self.buffer.w / BG_TILE_WIDTH + 2 {
                 for j in (bgstarty..=bgstarty + 3).rev() {
                     if j < 0 {
                         continue;
@@ -995,7 +996,7 @@ impl Game {
         for k in 0..3 {
             let ki = TILE_TOP_HEIGHT * k - k;
             let mut draw_player = false;
-            for i in startx..startx + 14 {
+            for i in startx..startx + self.buffer.w / (TILE_WIDTH - 1) + 2 {
                 for j in (starty..=starty + 10).rev() {
                     let t = self.map.get_bg(i, j, k);
                     if t != 0 {
@@ -1028,7 +1029,8 @@ impl Game {
         }
 
         if let Some(p) = self.player.as_deref() {
-            self.score.display(&mut self.buffer, p);
+            let ox = (self.buffer.w - SCREEN_WIDTH) / 2;
+            self.score.display(&mut self.buffer, p, ox);
         }
 
         if sys::key(KEY_P) {
@@ -1046,7 +1048,8 @@ impl Game {
         }
 
         if let Some(m) = &mut self.message {
-            gfx::masked_blit(&m.msg, &mut self.buffer, 0, 0, (SCREEN_WIDTH - m.msg.w) / 2, 60, m.msg.w, m.msg.h);
+            let mx = (self.buffer.w - m.msg.w) / 2;
+            gfx::masked_blit(&m.msg, &mut self.buffer, 0, 0, mx, 60, m.msg.w, m.msg.h);
             m.delay += 1;
             if m.delay > MSG_FRAME_DELAY {
                 self.message = None;
@@ -1082,22 +1085,33 @@ impl Game {
         true
     }
 
+    /// Matches the game view to the display setting (320 original, 427 widescreen). Also called
+    /// every frame so F7 takes effect immediately.
+    fn apply_view_width(&mut self) {
+        let w = sys::gameplay_width();
+        if self.buffer.w != w {
+            self.buffer = Bitmap::new(w, SCREEN_HEIGHT);
+            self.background_available = false;
+        }
+        sys::set_screen_width(w);
+    }
+
     fn pause(&mut self) {
         while sys::keypressed() {
             sys::readkey();
         }
         let mut buf = sys::screen_copy();
         let mut x = 0;
-        while x < 320 {
+        while x < buf.w {
             let mut y = 0;
-            while y < 240 {
+            while y < buf.h {
                 buf.putpixel(x, y, 0);
                 buf.putpixel(x + 1, y + 1, 0);
                 y += 2;
             }
             x += 2;
         }
-        self.msg_font.print_centre("PAUSE", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, &mut buf);
+        self.msg_font.print_centre("PAUSE", buf.w / 2, SCREEN_HEIGHT / 2, &mut buf);
         sys::show(&buf, 0, 0);
         while !sys::keypressed() {
             sys::rest(10);
@@ -1153,7 +1167,8 @@ impl Game {
     fn scroll(&mut self) {
         let Some(p) = self.player.as_deref() else { return };
         let (px, py) = (p.base().x, p.base().y);
-        self.map_x = px - 100;
+        // Widescreen keeps the player at the same spot relative to the centre.
+        self.map_x = px - 100 - (self.buffer.w - SCREEN_WIDTH) / 2;
         if py - 65 < self.map_y {
             self.map_y = py - 65;
         } else if py - 110 + SCORE_BOARD_HEIGHT > self.map_y {
@@ -1166,7 +1181,7 @@ impl Game {
         if self.map_y < 0 {
             self.map_y = 0;
         }
-        let max_x = self.map.width() * (TILE_WIDTH - 1) - 330;
+        let max_x = self.map.width() * (TILE_WIDTH - 1) - 330 - (self.buffer.w - SCREEN_WIDTH);
         if self.map_x > max_x {
             self.map_x = max_x;
         }
@@ -1265,7 +1280,9 @@ impl Game {
         }
         sys::clear_keybuf();
         self.cheat_letters.clear();
+        self.apply_view_width();
         let ret = self.play_loop();
+        sys::set_screen_width(SCREEN_WIDTH);
         sys::clear_keybuf();
         if let (Some(pd), Some(p)) = (p_dat, self.player.as_deref()) {
             pd.health = p.base().energy;

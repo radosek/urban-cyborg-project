@@ -39,6 +39,8 @@ see `.github/workflows/build.yml`).
     ./urban -f gamemaps/level11.map   # play one map
 
 - Alt/Cmd+Enter toggles fullscreen (`URBAN_FULLSCREEN=1` starts fullscreen).
+- Graphics (CONFIG → GRAPHICS, or in game): **F5** filter (PIXELS original / SMOOTH / SCALEX
+  Scale3x / HQX hq4x), **F6** CRT look, **F7** widescreen 16:9. Saved in `video.cfg`.
 - Keyboard by default: arrows, Ctrl fire, Space jump, Shift prev/next weapon, 1–7 weapons, P pause.
 - Gamepads (Xbox, PlayStation, Switch Pro, …) via SDL; choose GAMEPAD in CONFIG → controls.
 - Config, saves and highscores live in the per-user app data folder.
