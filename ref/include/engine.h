@@ -38,7 +38,7 @@
 #include "score.h"
 
 #define MAX_OBJECTS 		1000
-#define MAX_INNERLAYER 		100
+#define MAX_INNERLAYER 		400
 #define MAX_EFFECTS_OBJECTS	400
 #define MAX_DEKORATION_OBJECTS	400
 #define MAX_MAP_EFFECT	 	400

@@ -29,7 +29,6 @@ pub const FRAMESPERSEC: i32 = 60;
 pub const PLAYER_N_WEAPONS: usize = 7;
 
 pub const MAX_OBJECTS: usize = 1000;
-pub const MAX_INNERLAYER: usize = 100;
 pub const MAX_EFFECTS_OBJECTS: usize = 400;
 pub const MAX_DEKORATION_OBJECTS: usize = 400;
 
@@ -780,8 +779,8 @@ impl Game {
     fn collide_pair(&mut self, la: List, i: usize, lb: List, j: usize) {
         if let Some(f) = std::env::var("URBAN_STATE_FRAME").ok().and_then(|v| v.parse::<u64>().ok()) {
             if sys::replay_frame() == f {
-                if let (Some(a), Some(b), false) = (self.base_at(la, i), self.base_at(lb, j), la == List::Innerlayer) {
-                    let tag = if la == List::AlwaysUpdate { "always" } else { "obj" };
+                if let (Some(a), Some(b)) = (self.base_at(la, i), self.base_at(lb, j)) {
+                    let tag = match la { List::AlwaysUpdate => "always", List::Innerlayer => "inner", _ => "obj" };
                     eprintln!("C {} {} {} {:x} {:x}", tag, i, j, a.me, b.me);
                 }
             }
@@ -1327,9 +1326,9 @@ impl Game {
                         }
                         Some(crate::objects::Spawn::Inner(mut o)) => {
                             o.spawned(self);
-                            if self.innerlayer.len() < MAX_INNERLAYER {
-                                self.innerlayer.push(Slot::Obj(o));
-                            }
+                            // No cap: level 6-3 has 114 entries; the original overran its
+                            // 100-entry array here.
+                            self.innerlayer.push(Slot::Obj(o));
                         }
                         Some(crate::objects::Spawn::Always(mut o)) => {
                             o.spawned(self);

@@ -68,6 +68,8 @@ extern "C" void srandom(unsigned seed) {
 		rng_state = (uint64_t)seed | 1;
 }
 
+static void menu_load();
+
 static void replay_load() {
 	FILE *f = fopen(getenv("URBAN_REPLAY"), "r");
 	if (!f) {
@@ -437,6 +439,10 @@ int allegro_init() {
 	atexit(allegro_exit);
 	if (replay)
 		replay_load();
+	if (getenv("URBAN_MENU_KEYS")) {
+		replay = 1;
+		menu_load();
+	}
 	return 0;
 }
 
@@ -531,6 +537,10 @@ void rest(long ms) {
 
 const char *user_dir() {
 	static char *dir;
+	if (!dir && getenv("URBAN_USER_DIR")) {
+		dir = (char *)malloc(strlen(getenv("URBAN_USER_DIR")) + 2);
+		sprintf(dir, "%s/", getenv("URBAN_USER_DIR"));
+	}
 	if (!dir)
 		dir = SDL_GetPrefPath("", "urban");
 	return dir ? dir : "./";
@@ -910,13 +920,63 @@ void textprintf_centre(BITMAP *bmp, FONT *f, int x, int y, int color, const char
 }
 
 /**************************************************************************/
+/* Menu replay (URBAN_MENU_KEYS): scripted keys are handed out whenever the game reads one,
+   and the screen is fingerprinted at each read so menus can be diffed against the Rust port. */
+static int menu_keys[4096];
+static int num_menu_keys = -1, cur_menu_key;
+static FILE *menu_trace;
+
+static void menu_load() {
+	num_menu_keys = 0;
+	FILE *f = fopen(getenv("URBAN_MENU_KEYS"), "r");
+	if (!f) {
+		perror("URBAN_MENU_KEYS");
+		exit(1);
+	}
+	int sc, ascii;
+	while (num_menu_keys < 4096 && fscanf(f, "%d %d", &sc, &ascii) == 2)
+		menu_keys[num_menu_keys++] = (sc << 8) | ascii;
+	fclose(f);
+	if (getenv("URBAN_TRACE_OUT"))
+		menu_trace = fopen(getenv("URBAN_TRACE_OUT"), "w");
+}
+
+static uint64_t screen_hash() {
+	uint64_t h = 1469598103934665603ULL;
+	for (int i = 0; i < screen->w * screen->h; i++) {
+		h ^= screen->dat[i];
+		h *= 1099511628211ULL;
+	}
+	for (int i = 0; i < 256; i++) {
+		h ^= cur_pal[i].r | (cur_pal[i].g << 8) | (cur_pal[i].b << 16);
+		h *= 1099511628211ULL;
+	}
+	return h;
+}
+
 int keypressed() {
 	present(0);
 	pump_events();
+	if (num_menu_keys >= 0)
+		return 1;
 	return keybuf_head != keybuf_tail;
 }
 
 int readkey() {
+	if (num_menu_keys >= 0) {
+		if (menu_trace) {
+			fprintf(menu_trace, "%d %016llx\n", cur_menu_key, (unsigned long long)screen_hash());
+			fflush(menu_trace);
+		}
+		if (getenv("URBAN_DUMP") && atoi(getenv("URBAN_DUMP")) == cur_menu_key && getenv("URBAN_DUMP_DIR")) {
+			char path[4096];
+			snprintf(path, sizeof(path), "%s/cpp_%06d.bmp", getenv("URBAN_DUMP_DIR"), cur_menu_key);
+			write_bmp8(path);
+		}
+		if (cur_menu_key >= num_menu_keys)
+			exit(0);
+		return menu_keys[cur_menu_key++];
+	}
 	while (!keypressed())
 		SDL_Delay(5);
 	int k = keybuf[keybuf_head];

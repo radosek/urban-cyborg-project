@@ -66,7 +66,7 @@ const SAVE_VERSION: u32 = 1;
 const SLOT_BYTES: usize = 4 + 1 + NAME_MAX + 4 * (1 + 10 + 10 + 2);
 
 fn save_path() -> std::path::PathBuf {
-    sys::user_dir().join("savegame.dat")
+    sys::user_dir().join("savegames.v1")
 }
 
 fn encode(slots: &Slots) -> Vec<u8> {

@@ -107,7 +107,7 @@ int Cluster_o::update() {
 				break;
                         case LEFT_DIR:
 				for (int i = 0;i < NUM_GRENADES;i++)
-					ENGINE.create_alwaysupdate(new ClusterGrenade_o(x + width + 5, y - 10, z, -(2 + random() % 5), -(random() % 3), -2 + random() % 4, friends));
+					ENGINE.create_alwaysupdate(new ClusterGrenade_o(x - 5, y - 10, z, -(2 + random() % 5), -(random() % 3), -2 + random() % 4, friends));
 				break;
 		}
 

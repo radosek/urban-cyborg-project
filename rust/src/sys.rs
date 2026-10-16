@@ -87,6 +87,7 @@ struct Sys {
     audio: Option<AudioDevice<Mixer>>,
     mixer: Arc<Mutex<MixState>>,
     replay: Option<Replay>,
+    menu_keys: Option<MenuKeys>,
 }
 
 /// Deterministic replay for diffing against the C++ build (tools/difftest.sh).
@@ -101,7 +102,53 @@ struct Replay {
     trace: Option<std::io::BufWriter<std::fs::File>>,
 }
 
+/// Menu replay (URBAN_MENU_KEYS): scripted keys are handed out whenever the game reads one,
+/// and the screen is fingerprinted at each read (mirrors port/sdl_allegro.cc).
+struct MenuKeys {
+    keys: Vec<i32>,
+    cur: usize,
+    trace: Option<std::fs::File>,
+    dump: Option<usize>,
+    dump_dir: Option<PathBuf>,
+}
+
+impl MenuKeys {
+    fn load() -> Option<MenuKeys> {
+        let path = std::env::var_os("URBAN_MENU_KEYS")?;
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+            eprintln!("URBAN_MENU_KEYS: {}", e);
+            std::process::exit(1)
+        });
+        let nums: Vec<i32> = text.split_whitespace().filter_map(|t| t.parse().ok()).collect();
+        let keys = nums.chunks(2).filter(|c| c.len() == 2).map(|c| (c[0] << 8) | c[1]).collect();
+        Some(MenuKeys {
+            keys,
+            cur: 0,
+            trace: std::env::var_os("URBAN_TRACE_OUT").and_then(|p| std::fs::File::create(p).ok()),
+            dump: std::env::var("URBAN_DUMP").ok().and_then(|v| v.parse().ok()),
+            dump_dir: std::env::var_os("URBAN_DUMP_DIR").map(PathBuf::from),
+        })
+    }
+}
+
+fn screen_hash(s: &Sys) -> u64 {
+    let mut h: u64 = 1469598103934665603;
+    for &c in &s.screen.data {
+        h ^= c as u64;
+        h = h.wrapping_mul(1099511628211);
+    }
+    for c in s.pal.iter() {
+        h ^= c.r as u64 | (c.g as u64) << 8 | (c.b as u64) << 16;
+        h = h.wrapping_mul(1099511628211);
+    }
+    h
+}
+
 impl Replay {
+    fn empty() -> Replay {
+        Replay { steps: Vec::new(), cur: 0, frame: 0, stop: None, dump: None, dump_dir: None, trace: None }
+    }
+
     fn load() -> Option<Replay> {
         let path = std::env::var_os("URBAN_REPLAY")?;
         let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
@@ -246,7 +293,8 @@ pub fn init() {
         last_auto_tick: u64::MAX,
         audio,
         mixer,
-        replay: Replay::load(),
+        replay: Replay::load().or_else(|| std::env::var_os("URBAN_MENU_KEYS").map(|_| Replay::empty())),
+        menu_keys: MenuKeys::load(),
     };
     SYS.with(|s| *s.borrow_mut() = Some(sys));
     open_pad();
@@ -563,11 +611,31 @@ pub fn keyboard_reset() {
 pub fn keypressed() -> bool {
     present(false);
     pump();
-    with(|s| !s.keybuf.is_empty())
+    with(|s| s.menu_keys.is_some() || !s.keybuf.is_empty())
 }
 
 /// Blocks for a key; returns `(scancode << 8) | ascii` like Allegro.
 pub fn readkey() -> i32 {
+    if let Some(k) = with(|s| {
+        use std::io::Write;
+        let h = screen_hash(s);
+        let m = s.menu_keys.as_mut()?;
+        if let Some(t) = m.trace.as_mut() {
+            let _ = writeln!(t, "{} {:016x}", m.cur, h);
+        }
+        if m.dump == Some(m.cur) {
+            if let Some(d) = &m.dump_dir {
+                write_bmp(&d.join(format!("rust_{:06}.bmp", m.cur)), &s.screen, &s.pal);
+            }
+        }
+        if m.cur >= m.keys.len() {
+            std::process::exit(0);
+        }
+        m.cur += 1;
+        Some(m.keys[m.cur - 1])
+    }) {
+        return k;
+    }
     while !keypressed() {
         std::thread::sleep(Duration::from_millis(5));
     }
@@ -639,7 +707,10 @@ pub fn ticks_ms() -> u64 {
 
 /// Per-user writable directory for config, saves and highscores.
 pub fn user_dir() -> PathBuf {
-    let p = sdl2::filesystem::pref_path("", "urban").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("."));
+    let p = match std::env::var_os("URBAN_USER_DIR") {
+        Some(d) => PathBuf::from(d),
+        None => sdl2::filesystem::pref_path("", "urban").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from(".")),
+    };
     let _ = std::fs::create_dir_all(&p);
     p
 }

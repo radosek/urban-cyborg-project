@@ -23,7 +23,7 @@ const VERSION: u32 = 1;
 const ENTRY: usize = 1 + NAME_MAX + 8;
 
 fn path() -> std::path::PathBuf {
-    sys::user_dir().join("hs.dat")
+    sys::user_dir().join("highscores.v1")
 }
 
 fn open() -> Vec<Score> {

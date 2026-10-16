@@ -1489,6 +1489,8 @@ void Engine::check_collision() {
 
 				if (y_dist < height) {
 
+					if (getenv("URBAN_STATE_FRAME") && replay_frame_no() == atol(getenv("URBAN_STATE_FRAME")))
+						fprintf(stderr, "C inner %d %d %x %x\n", j, i, innerlayer[j]->GetWho(), innerlayer[i]->GetWho());
 					innerlayer[j]->Collision(innerlayer[i]);
 					innerlayer[i]->Collision(innerlayer[j]);
 				}
