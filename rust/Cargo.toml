@@ -1,0 +1,10 @@
+[package]
+name = "urban"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hound = "3.5"
+sdl2 = { version = "0.38", features = ["bundled", "static-link"] }
+xmrs = "0.15"
+xmrsplayer = "0.15"
