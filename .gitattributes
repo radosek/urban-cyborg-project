@@ -1,0 +1,4 @@
+# Original C++ game kept as the test reference; not counted in GitHub language stats.
+ref/** linguist-vendored
+port/** linguist-vendored
+CMakeLists.txt linguist-vendored
