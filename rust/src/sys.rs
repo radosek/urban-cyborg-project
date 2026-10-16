@@ -131,6 +131,15 @@ impl MenuKeys {
     }
 }
 
+pub fn dump_screen(path: &std::path::Path) {
+    with(|s| write_bmp(path, &s.screen, &s.pal));
+}
+
+/// FNV-1a hash of the screen and palette (replay tests).
+pub fn current_screen_hash() -> u64 {
+    with(|s| screen_hash(s))
+}
+
 fn screen_hash(s: &Sys) -> u64 {
     let mut h: u64 = 1469598103934665603;
     for &c in &s.screen.data {

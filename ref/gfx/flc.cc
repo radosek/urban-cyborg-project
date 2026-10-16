@@ -318,8 +318,9 @@ int read_flc_ss2() {
                         } else if (count < 0) {
                         	read_flc_data(&tmp2, 2);
                                 count = -count;
-                                for (i = 0;i < count * 2;i++)
-                                	*((short *)(&flc_bitmap->dat[flc_bitmap->w * y] + x + i)) = tmp2;
+                                /* Fixed: stored a short at every byte offset, writing one byte past the run. */
+                                for (i = 0;i < count;i++)
+                                	memcpy(&flc_bitmap->dat[flc_bitmap->w * y] + x + 2 * i, &tmp2, 2);
 				x += count * 2;
                         }
                 }

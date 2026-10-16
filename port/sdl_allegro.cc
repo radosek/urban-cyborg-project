@@ -69,6 +69,7 @@ extern "C" void srandom(unsigned seed) {
 }
 
 static void menu_load();
+uint64_t screen_hash();
 
 static void replay_load() {
 	FILE *f = fopen(getenv("URBAN_REPLAY"), "r");
@@ -100,6 +101,11 @@ static void replay_load() {
 		dump_frame = atol(getenv("URBAN_DUMP"));
 	if (getenv("URBAN_TRACE_OUT"))
 		trace_out = fopen(getenv("URBAN_TRACE_OUT"), "w");
+}
+
+static void write_bmp8(const char *path);
+void urban_write_bmp(const char *path) {
+	write_bmp8(path);
 }
 
 static void write_bmp8(const char *path) {
@@ -943,7 +949,7 @@ static void menu_load() {
 		menu_trace = fopen(getenv("URBAN_MENU_TRACE"), "w");
 }
 
-static uint64_t screen_hash() {
+uint64_t screen_hash() {
 	uint64_t h = 1469598103934665603ULL;
 	for (int i = 0; i < screen->w * screen->h; i++) {
 		h ^= screen->dat[i];

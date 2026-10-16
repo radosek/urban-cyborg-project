@@ -227,6 +227,10 @@ void keyboard_reset();
 /* Per-user writable directory for config, saves and highscores, with trailing separator. */
 const char *user_dir();
 
+/* FNV-1a hash of the screen and palette (replay tests). */
+uint64_t screen_hash();
+void urban_write_bmp(const char *path);
+
 /* Current replay frame number (0 when not replaying). */
 long replay_frame_no();
 

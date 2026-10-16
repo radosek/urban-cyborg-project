@@ -43,6 +43,7 @@
 #include "engine.h"
 #include "icache.h"
 #include "game.h"
+#include "datfile.h"
 #include "highscor.h"
 #include "intro.h"
 #include "config.h"
@@ -239,6 +240,33 @@ void UrbanSetGFXMode() {
 extern char *special_thanks;
 
 /*****************************************************************************************/
+
+/* Test hook (tools/flitest.sh): play one animation from intro.dat and fingerprint every frame. */
+static FILE *fli_trace;
+static int fli_frames, fli_max;
+static int fli_test_callback() {
+	fprintf(fli_trace, "%d %016llx\n", fli_frames, (unsigned long long)screen_hash());
+	if (getenv("URBAN_DUMP") && atoi(getenv("URBAN_DUMP")) == fli_frames && getenv("URBAN_DUMP_DIR")) {
+		char path[4096];
+		snprintf(path, sizeof(path), "%s/cpp_%06d.bmp", getenv("URBAN_DUMP_DIR"), fli_frames);
+		urban_write_bmp(path);
+	}
+	return ++fli_frames >= fli_max;
+}
+static void fli_test(const char *name) {
+	datfile dat("intro.dat");
+	char *buf = dat.load_file_to_memory((char *)name);
+	if (!buf) {
+		fprintf(stderr, "no %s\n", name);
+		exit(1);
+	}
+	fli_trace = fopen(getenv("URBAN_TRACE_OUT"), "w");
+	fli_max = getenv("URBAN_FRAMES") ? atoi(getenv("URBAN_FRAMES")) : 200;
+	play_memory_fli(buf, screen, 1, fli_test_callback);
+	fclose(fli_trace);
+	exit(0);
+}
+
 int main(int argc, char	**argv)	{
 //	int looping = 1;
 	int pos	= 1;
@@ -307,6 +335,9 @@ M”jliga v„xlar:
 	}
 
 	UrbanSetGFXMode();
+
+	if (getenv("URBAN_FLI_TEST"))
+		fli_test(getenv("URBAN_FLI_TEST"));
 
         if (IS_INTRO_ON) {
 		// Run intro

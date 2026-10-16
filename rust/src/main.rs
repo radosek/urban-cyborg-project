@@ -50,6 +50,9 @@ fn main() {
     config::load();
     sys::init();
     icache::init();
+    if let Ok(name) = std::env::var("URBAN_FLI_TEST") {
+        fli_test(&name);
+    }
     sound::set_music_volume(config::get().music_vol);
     let mut g = engine::Game::new();
     if let Some(l) = level {
@@ -59,4 +62,29 @@ fn main() {
         return;
     }
     menu::run(&mut g);
+}
+
+/// Test hook (tools/flitest.sh): play one animation from intro.dat and fingerprint every frame.
+fn fli_test(name: &str) -> ! {
+    use std::io::Write;
+    sys::set_palette(&gfx::BLACK_PALETTE);
+    let dat = dat::Datfile::open(&sys::data_dir().join("intro.dat")).expect("intro.dat");
+    let data = dat.get(name).unwrap_or_else(|| {
+        eprintln!("no {}", name);
+        std::process::exit(1)
+    });
+    let mut out = std::fs::File::create(std::env::var("URBAN_TRACE_OUT").expect("URBAN_TRACE_OUT")).expect("trace");
+    let max: usize = std::env::var("URBAN_FRAMES").ok().and_then(|v| v.parse().ok()).unwrap_or(200);
+    let mut n = 0;
+    flc::play_memory_fli(data, true, || {
+        let _ = writeln!(out, "{} {:016x}", n, sys::current_screen_hash());
+        if std::env::var("URBAN_DUMP").ok().and_then(|v| v.parse::<usize>().ok()) == Some(n) {
+            if let Some(d) = std::env::var_os("URBAN_DUMP_DIR") {
+                sys::dump_screen(&std::path::PathBuf::from(d).join(format!("rust_{:06}.bmp", n)));
+            }
+        }
+        n += 1;
+        n >= max
+    });
+    std::process::exit(0)
 }

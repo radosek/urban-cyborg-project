@@ -401,7 +401,7 @@ pub fn play_memory_fli(data: &[u8], looping: bool, mut callback: impl FnMut() ->
         }
         decoded += 1;
         ok = fli.next_frame(looping);
-        while timer(decoded) <= 0 {
+        while timer(decoded) <= 0 && std::env::var_os("URBAN_FLI_TEST").is_none() {
             sys::pump();
             std::thread::sleep(Duration::from_millis(1));
         }
