@@ -2,3 +2,4 @@ build/
 .DS_Store
 rust/target/
 .claude/
+dist/
