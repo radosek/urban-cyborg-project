@@ -318,6 +318,7 @@ class Rambo_o:public Object {
                 void Collision(Object *);
 	private:
         	Anim anim;
+		int jump_armed, landed; /* jump fix: own flags instead of counter2 */
 };
 
 class Boss_Rambo_o:public Rambo_o {
@@ -335,6 +336,7 @@ class Arnold_o:public Object {
                 void Collision(Object *);
 	private:
         	Anim anim;
+		int jump_armed, landed; /* jump fix: own flags instead of counter2 */
 };
 
 class Boss_Arnold_o:public Arnold_o {
@@ -352,6 +354,7 @@ class Dolph_o:public Object {
                 void Collision(Object *);
 	private:
         	Anim anim;
+		int jump_armed, landed; /* jump fix: own flags instead of counter2 */
 };
 
 class Boss_Dolph_o:public Dolph_o {

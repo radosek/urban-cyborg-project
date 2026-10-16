@@ -101,6 +101,7 @@
 #define FIRE_SAMPLE "samples/shotgn2.wav"
 /**************************************************************************/
 Arnold_o::Arnold_o(int X, int Y, int Z) : Object(X, Y, Z) {
+	jump_armed = landed = 0;
 	RGB pal[256];
         char filename[512];
         int i;
@@ -221,7 +222,9 @@ int Arnold_o::update() {
 	if (!counter) {
         	if (state == STATE_JUMP)
                 	state = STATE_JUMPING;
-		else {
+		else if (state == STATE_JUMPING) {
+			/* Fixed: keep the jump until landing instead of re-rolling mid-air. */
+		} else {
 	               	r = random() % PROB_NUMBER;
 			if (r >= PROB_WALK_START && r <= PROB_WALK_END) {
 				state = STATE_WALK;
@@ -253,25 +256,26 @@ int Arnold_o::update() {
                 	case STATE_LAND:
                         	speed_x = 0;
                         	current_image = (direction == RIGHT_DIR ? 34 : 32);
-                                if (!counter2) {
-                                	counter2 = 1;
+                                if (!landed) {
+                                	landed = 1;
                                         counter = LAND_DELAY;
 				}
                                 break;
         		case STATE_JUMP:
                         	speed_x = 0;
 				current_image = (direction == RIGHT_DIR ? 34 : 32);
-                        	if (!counter2) {
-                        		counter2 = 1;
+                        	if (!jump_armed) {
+                        		jump_armed = 1;
+                        		landed = 0;
 		                        counter = JUMP_DELAY;
 				}
 				break;
 			case STATE_JUMPING:
-        	        	if (counter2) {
+        	        	if (jump_armed) {
                 	        	speed_y = MIN_Y_SPEED;
                         	        speed_x = (direction == RIGHT_DIR ? 5 : -5);
                                         y += speed_y;
-                                	counter2 = 0;
+                                	jump_armed = 0;
 				}
         	                counter = 5;
                 	        current_image = (direction == RIGHT_DIR ? 35 : 33);
@@ -459,6 +463,17 @@ d† ska jag hoppa
                 speed_z = 0;
         }
 
+
+        /* Fixed: airborne horizontal speed must not carry through walls. */
+	if (speed_y) {
+		if (speed_x > 0) {
+			while (ENGINE.check_wall(x + coll_x + coll_width + speed_x, y + coll_y + coll_height, z) && speed_x)
+				speed_x--;
+		} else if (speed_x < 0) {
+			while (ENGINE.check_wall(x + coll_x + speed_x, y + coll_y + coll_height, z) && speed_x)
+				speed_x++;
+		}
+	}
 
         x += speed_x;
         y += speed_y;
