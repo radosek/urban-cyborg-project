@@ -1,33 +1,3 @@
-//! STUB — replaced by the port of ref/objects/seagal.cc
-#![allow(unused)]
+//! Port of ref/objects/seagal.cc (shared AI in ai_hero.rs).
 
-use crate::engine::*;
-
-pub struct BossSeagal {
-    pub base: Base,
-}
-
-impl BossSeagal {
-    pub fn new(x: i32, y: i32, z: i32) -> BossSeagal {
-        todo!("BossSeagal")
-    }
-}
-
-impl Obj for BossSeagal {
-    crate::obj_boilerplate!();
-}
-
-pub struct Seagal {
-    pub base: Base,
-}
-
-impl Seagal {
-    pub fn new(x: i32, y: i32, z: i32) -> Seagal {
-        todo!("Seagal")
-    }
-}
-
-impl Obj for Seagal {
-    crate::obj_boilerplate!();
-}
-
+crate::hero_objects!(Seagal, BossSeagal, crate::objects::ai_hero::Kind::Seagal, 2000, 40);

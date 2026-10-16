@@ -1,6 +1,7 @@
 //! Game objects (port of ref/objects/*.cc).
 
 pub mod anim;
+pub mod ai_hero;
 pub mod airexp;
 pub mod airgren;
 pub mod airstrke;
