@@ -227,6 +227,9 @@ void keyboard_reset();
 /* Per-user writable directory for config, saves and highscores, with trailing separator. */
 const char *user_dir();
 
+/* Current replay frame number (0 when not replaying). */
+long replay_frame_no();
+
 /* Sleeps until the next frame boundary at the given rate (replaces SIGALRM pacing). */
 void wait_frame(int fps);
 

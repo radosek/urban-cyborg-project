@@ -175,10 +175,10 @@ int Einstein_o::update() {
                         anim.reset();
                         counter = 3 * WRITE_DELAY;
         	case STATE_WRITING:
-	                current_image = direction == RIGHT_DIR ? 24 : 27 + anim.next_frame(2, WRITE_DELAY);
+	                current_image = (direction == RIGHT_DIR ? 24 : 27) + anim.next_frame(2, WRITE_DELAY);
                         break;
 		case STATE_NONE:
-                	current_image = (direction == RIGHT_DIR ? 5 : 0);
+                	current_image = (direction == RIGHT_DIR ? 0 : 5);
                         counter = 0;
                         anim.reset();
                 	break;

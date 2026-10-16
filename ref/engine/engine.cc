@@ -998,6 +998,17 @@ int Engine::play_level(char *map_name, struct PlayerData *p_dat, int controls) {
 	return return_code;
 }
 /**************************************************************************/
+
+static void dump_state(const char *tag, Object **list, int n) {
+	for (int i = 0; i < n; i++) {
+		Object *o = list[i];
+		if (!o)
+			continue;
+		fprintf(stderr, "S %s %d me=%x x=%d y=%d z=%d l=%d cx=%d cy=%d cw=%d ch=%d e=%d str=%d sx=%d sy=%d\n", tag, i, o->GetWho(),
+			o->GetX(), o->GetY(), o->GetZ(), o->GetLayer(), o->GetCollisionX(), o->GetCollisionY(),
+			o->GetCollisionWidth(), o->GetCollisionHeight(), o->GetEnergy(), o->GetStrength(), o->GetSpeedX(), o->GetSpeedY());
+	}
+}
 int Engine::display_map() {
 	int i, j, k;
 	int startx = (map_x / (TILE_WIDTH - 1));
@@ -1028,6 +1039,10 @@ int Engine::display_map() {
 #endif
        	if (!background_availible)
 		clear_to_color (buffer, 1);
+	if (getenv("URBAN_STATE_FRAME") && replay_frame_no() == atol(getenv("URBAN_STATE_FRAME"))) {
+		dump_state("obj", objects, num_objects);
+		dump_state("inner", innerlayer, num_innerlayer);
+	}
 	check_collision();
 
         if (do_shake && always_shake == 0)

@@ -143,7 +143,7 @@ int BurningBody_o::update() {
 
 	switch (state) {
 		case STATE_NONE:
-                	current_image = (direction == RIGHT_DIR ? 5 : 0);
+                	current_image = (direction == RIGHT_DIR ? 0 : 4);
                         counter = 0;
                         anim.reset();
                 	break;

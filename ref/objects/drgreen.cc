@@ -91,7 +91,7 @@ DrGreen_o::DrGreen_o(int X, int Y, int Z) : Object(X, Y, Z) {
                 	num_images++;
 	}
         for (i = 10;i < 14;i++) {
-		sprintf(filename, "doc/docv/dead%d.pcx", i - 9);
+		sprintf(filename, "doc/doch/dead%d.pcx", i - 9);
                 images[i] = icache.GetImage(filename, pal);
                 if (images[i])
                 	num_images++;
@@ -164,8 +164,8 @@ int DrGreen_o::update() {
                 	return DELETE_ME;
 
 		case STATE_DYING:
-			current_image = (direction == RIGHT_DIR ? 14 : 10) + anim.next_frame(4, 5);
-                        if(current_image == ((direction == RIGHT_DIR ? 14 : 10) + 4)) {
+			current_image = (direction == RIGHT_DIR ? 10 : 14) + anim.next_frame(4, 5);
+                        if(current_image == ((direction == RIGHT_DIR ? 10 : 14) + 4)) {
 
                         	current_image--;
 				ENGINE.create_dekoration(this);
@@ -174,7 +174,7 @@ int DrGreen_o::update() {
                         }
                 	break;
 		case STATE_NONE:
-                	current_image = (direction == RIGHT_DIR ? 5 : 0);
+                	current_image = (direction == RIGHT_DIR ? 0 : 5);
                         counter = 0;
                         anim.reset();
                 	break;
@@ -254,27 +254,27 @@ void DrGreen_o::Collision(Object *o) {
 			ENGINE.create_object(new FrosenBody_o(x, y + height, z, direction));
                 	state = STATE_DEAD;
 		} else if (o->GetWho() & ENEMY_PLASMA) {
+			/* Fixed: plasma never set STATE_DEAD, so it gibbed every frame of contact. */
+			state = STATE_DEAD;
 			DEATH_BY_EXPLOSION;
 			score += 100;
 			return;
 		} else if (o->GetWho() & ENEMY_HS_BULLET) {
+			/* Fixed: the blood spray was unreachable after the returns below. */
+			for (i = 0;i < 7;i++) {
+				int by = y + random() % height;
+				int sx = direction == RIGHT_DIR ? -(2 + random() % 4) : 2 + random() % 4;
+				ENGINE.create_effect(new blood_o(x + width / 2, by, z, sx));
+			}
 	        	if (state == STATE_DYING) {
                                 score += 100;
         	        	state = STATE_DEAD;
 				DEATH_BY_EXPLOSION;
-                        	return;
 			} else {
                         	state = STATE_DYING;
                 	        anim.reset();
-                        	return;
 			}
-                	if (direction == RIGHT_DIR)
-				for (i = 0;i < 7;i++)
-				        ENGINE.create_effect(new blood_o(x + width / 2, y + random() % height, z, - 2 + random() % 4));
-			else
-				for (i = 0;i < 7;i++)
-				        ENGINE.create_effect(new blood_o(x + width / 2, y + random() % height, z, 2 + random() % 4));
-
+                       	return;
 		}
 	        counter = 0;
 	}

@@ -740,6 +740,18 @@ impl Game {
         b.x < self.map_x - 500 || b.x > self.map_x + self.max_update_area_x || b.y < self.map_y - 500 || b.y > self.map_y + 500
     }
 
+    fn dump_state(&self, l: List, tag: &str) {
+        for i in 0..self.list(l).len() {
+            if let Some(o) = self.base_at(l, i) {
+                eprintln!(
+                    "S {} {} me={:x} x={} y={} z={} l={} cx={} cy={} cw={} ch={} e={} str={} sx={} sy={}",
+                    tag, i, o.me, o.x, o.y, o.z, o.layer, o.collision_x(), o.collision_y(), o.coll_width, o.coll_height,
+                    o.energy, o.strength, o.speed_x, o.speed_y
+                );
+            }
+        }
+    }
+
     // --- collisions ----------------------------------------------------------
 
     fn overlap(a: &Base, b: &Base) -> bool {
@@ -900,6 +912,12 @@ impl Game {
 
         if !self.background_available || !flags::background_on() {
             self.buffer.clear_to_color(1);
+        }
+        if let Some(f) = std::env::var("URBAN_STATE_FRAME").ok().and_then(|v| v.parse::<u64>().ok()) {
+            if sys::replay_frame() == f {
+                self.dump_state(List::Objects, "obj");
+                self.dump_state(List::Innerlayer, "inner");
+            }
         }
         self.check_collision();
         if self.do_shake != 0 && !self.always_shake {
@@ -1173,7 +1191,9 @@ impl Game {
     }
 
     pub fn play_level(&mut self, map_name: &str, p_dat: Option<&mut PlayerData>, controls: i32) -> i32 {
-        rng::seed(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(1));
+        if !sys::replaying() || std::env::var_os("URBAN_SEED").is_none() {
+            rng::seed(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(1));
+        }
         self.control_type = controls;
         if let Err(e) = self.map.load(map_name) {
             eprintln!("Can't open map '{}': {}", map_name, e);

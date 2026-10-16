@@ -60,6 +60,100 @@ struct Sys {
     last_auto_tick: u64,
     audio: Option<AudioDevice<Mixer>>,
     mixer: Arc<Mutex<MixState>>,
+    replay: Option<Replay>,
+}
+
+/// Deterministic replay for diffing against the C++ build (tools/difftest.sh).
+/// Mirrors the hooks in port/sdl_allegro.cc exactly: same script format, hash and timing.
+struct Replay {
+    steps: Vec<(u64, [bool; 128])>,
+    cur: usize,
+    frame: u64,
+    stop: Option<u64>,
+    dump: Option<u64>,
+    dump_dir: Option<PathBuf>,
+    trace: Option<std::io::BufWriter<std::fs::File>>,
+}
+
+impl Replay {
+    fn load() -> Option<Replay> {
+        let path = std::env::var_os("URBAN_REPLAY")?;
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+            eprintln!("URBAN_REPLAY: {}", e);
+            std::process::exit(1)
+        });
+        let mut steps = Vec::new();
+        for line in text.lines() {
+            let mut it = line.split_whitespace();
+            let Some(first) = it.next() else { continue };
+            if first.starts_with('#') {
+                continue;
+            }
+            let mut keys = [false; 128];
+            for k in it.filter_map(|t| t.parse::<usize>().ok()) {
+                if k > 0 && k < 128 {
+                    keys[k] = true;
+                }
+            }
+            steps.push((first.parse().unwrap_or(0), keys));
+        }
+        let env_u64 = |n: &str| std::env::var(n).ok().and_then(|v| v.parse::<u64>().ok());
+        if let Some(seed) = env_u64("URBAN_SEED") {
+            crate::rng::seed(seed);
+        }
+        Some(Replay {
+            steps,
+            cur: 0,
+            frame: 0,
+            stop: env_u64("URBAN_FRAMES"),
+            dump: env_u64("URBAN_DUMP"),
+            dump_dir: std::env::var_os("URBAN_DUMP_DIR").map(PathBuf::from),
+            trace: std::env::var_os("URBAN_TRACE_OUT").and_then(|p| std::fs::File::create(p).ok()).map(std::io::BufWriter::new),
+        })
+    }
+}
+
+pub fn replay_frame() -> u64 {
+    with(|s| s.replay.as_ref().map(|r| r.frame).unwrap_or(0))
+}
+
+pub fn replaying() -> bool {
+    with(|s| s.replay.is_some())
+}
+
+fn replay_tick(s: &mut Sys) {
+    use std::io::Write;
+    let Some(r) = s.replay.as_mut() else { return };
+    let mut h: u64 = 1469598103934665603;
+    for &c in &s.screen.data {
+        h ^= c as u64;
+        h = h.wrapping_mul(1099511628211);
+    }
+    for c in s.pal.iter() {
+        h ^= c.r as u64 | (c.g as u64) << 8 | (c.b as u64) << 16;
+        h = h.wrapping_mul(1099511628211);
+    }
+    if let Some(t) = r.trace.as_mut() {
+        let _ = writeln!(t, "{} {:016x} {}", r.frame, h, crate::rng::calls());
+    }
+    if Some(r.frame) == r.dump {
+        if let Some(d) = &r.dump_dir {
+            write_bmp(&d.join(format!("rust_{:06}.bmp", r.frame)), &s.screen, &s.pal);
+        }
+    }
+    r.frame += 1;
+    while r.cur < r.steps.len() && r.steps[r.cur].0 <= r.frame {
+        s.keys = r.steps[r.cur].1;
+        r.cur += 1;
+    }
+    if let Some(stop) = r.stop {
+        if r.frame >= stop {
+            if let Some(t) = r.trace.as_mut() {
+                let _ = t.flush();
+            }
+            std::process::exit(0);
+        }
+    }
 }
 
 thread_local! {
@@ -143,6 +237,7 @@ pub fn init() {
         last_auto_tick: u64::MAX,
         audio,
         mixer,
+        replay: Replay::load(),
     };
     SYS.with(|s| *s.borrow_mut() = Some(sys));
     open_pad();
@@ -359,6 +454,7 @@ pub fn pump() {
         for e in evs {
             match e {
                 Event::Quit { .. } => quit = true,
+                Event::KeyDown { .. } | Event::KeyUp { .. } if s.replay.is_some() => {}
                 Event::KeyDown { scancode: Some(sc), keycode, keymod, repeat, .. } => {
                     if sc == Scancode::Return && keymod.intersects(Mod::LALTMOD | Mod::RALTMOD | Mod::LGUIMOD | Mod::RGUIMOD) {
                         if !repeat {
@@ -486,7 +582,9 @@ pub fn simulate_keypress(k: i32) {
 pub fn rest(ms: u64) {
     present(false);
     pump();
-    std::thread::sleep(Duration::from_millis(ms));
+    if !replaying() {
+        std::thread::sleep(Duration::from_millis(ms));
+    }
 }
 
 pub fn vsync() {
@@ -496,6 +594,10 @@ pub fn vsync() {
 
 /// Sleeps until the next frame boundary at `fps` (replaces the original 60 Hz timer interrupt).
 pub fn wait_frame(fps: u32) {
+    if replaying() {
+        with(replay_tick);
+        return;
+    }
     let step = Duration::from_nanos(1_000_000_000 / fps as u64);
     let next = with(|s| {
         let now = Instant::now();

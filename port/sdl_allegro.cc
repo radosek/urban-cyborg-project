@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <dlfcn.h>
 #include "allegro.h"
 #include "font8x8_basic.h"
 
@@ -31,6 +32,135 @@ static Uint64 last_shot;
 static int shot_n;
 static int autoplay = getenv("URBAN_AUTOPLAY") != NULL;
 static Uint64 last_auto;
+
+/* Deterministic replay for diffing against the Rust port (see tools/difftest.sh). */
+static int replay = getenv("URBAN_REPLAY") != NULL;
+static FILE *trace_out;
+static long replay_frame;
+static long replay_stop = -1;
+static long dump_frame = -1;
+struct ReplayStep { long frame; unsigned char keys[128]; };
+static ReplayStep *steps;
+static int num_steps, cur_step;
+static uint64_t rng_state = 0x2545F4914F6CDD1DULL;
+static unsigned long rng_calls;
+
+extern "C" long random(void) {
+	rng_calls++;
+	if (getenv("URBAN_RNG_TRACE")) {
+		Dl_info info;
+		void *ra = __builtin_return_address(0);
+		if (dladdr(ra, &info) && info.dli_sname)
+			fprintf(stderr, "RNG %lu %s+%ld\n", rng_calls, info.dli_sname, (long)((char *)ra - (char *)info.dli_saddr));
+		else
+			fprintf(stderr, "RNG %lu %p\n", rng_calls, ra);
+	}
+	uint64_t x = rng_state;
+	x ^= x << 13;
+	x ^= x >> 7;
+	x ^= x << 17;
+	rng_state = x;
+	return (long)((x >> 33) & 0x7fffffff);
+}
+
+extern "C" void srandom(unsigned seed) {
+	if (!getenv("URBAN_SEED"))
+		rng_state = (uint64_t)seed | 1;
+}
+
+static void replay_load() {
+	FILE *f = fopen(getenv("URBAN_REPLAY"), "r");
+	if (!f) {
+		perror("URBAN_REPLAY");
+		exit(1);
+	}
+	char line[1024];
+	while (fgets(line, sizeof(line), f)) {
+		char *tok = strtok(line, " \t\r\n");
+		if (!tok || *tok == '#')
+			continue;
+		steps = (ReplayStep *)realloc(steps, (num_steps + 1) * sizeof(ReplayStep));
+		ReplayStep *st = &steps[num_steps++];
+		memset(st, 0, sizeof(*st));
+		st->frame = atol(tok);
+		while ((tok = strtok(NULL, " \t\r\n"))) {
+			int k = atoi(tok);
+			if (k > 0 && k < 128)
+				st->keys[k] = 1;
+		}
+	}
+	fclose(f);
+	if (getenv("URBAN_SEED"))
+		rng_state = (uint64_t)strtoull(getenv("URBAN_SEED"), NULL, 10) | 1;
+	if (getenv("URBAN_FRAMES"))
+		replay_stop = atol(getenv("URBAN_FRAMES"));
+	if (getenv("URBAN_DUMP"))
+		dump_frame = atol(getenv("URBAN_DUMP"));
+	if (getenv("URBAN_TRACE_OUT"))
+		trace_out = fopen(getenv("URBAN_TRACE_OUT"), "w");
+}
+
+static void write_bmp8(const char *path) {
+	FILE *f = fopen(path, "wb");
+	if (!f)
+		return;
+	int w = screen->w, h = screen->h, row = (w + 3) & ~3;
+	uint32_t size = 54 + 1024 + row * h;
+	unsigned char hdr[54] = {'B', 'M'};
+	memcpy(hdr + 2, &size, 4);
+	uint32_t off = 54 + 1024, hs = 40;
+	memcpy(hdr + 10, &off, 4);
+	memcpy(hdr + 14, &hs, 4);
+	memcpy(hdr + 18, &w, 4);
+	memcpy(hdr + 22, &h, 4);
+	hdr[26] = 1;
+	hdr[28] = 8;
+	fwrite(hdr, 1, 54, f);
+	for (int i = 0; i < 256; i++) {
+		unsigned char c[4] = {(unsigned char)(cur_pal[i].b << 2), (unsigned char)(cur_pal[i].g << 2), (unsigned char)(cur_pal[i].r << 2), 0};
+		fwrite(c, 1, 4, f);
+	}
+	unsigned char pad[4] = {0};
+	for (int y = h - 1; y >= 0; y--) {
+		fwrite(screen->line[y], 1, w, f);
+		fwrite(pad, 1, row - w, f);
+	}
+	fclose(f);
+}
+
+long replay_frame_no() {
+	return replay_frame;
+}
+
+/* Called once per game frame: records the visible frame, then applies the scripted keys. */
+static void replay_frame_tick() {
+	uint64_t h = 1469598103934665603ULL;
+	for (int i = 0; i < screen->w * screen->h; i++) {
+		h ^= screen->dat[i];
+		h *= 1099511628211ULL;
+	}
+	for (int i = 0; i < 256; i++) {
+		h ^= cur_pal[i].r | (cur_pal[i].g << 8) | (cur_pal[i].b << 16);
+		h *= 1099511628211ULL;
+	}
+	if (trace_out)
+		fprintf(trace_out, "%ld %016llx %lu\n", replay_frame, (unsigned long long)h, rng_calls);
+	if (replay_frame == dump_frame && getenv("URBAN_DUMP_DIR")) {
+		char path[4096];
+		snprintf(path, sizeof(path), "%s/cpp_%06ld.bmp", getenv("URBAN_DUMP_DIR"), replay_frame);
+		write_bmp8(path);
+	}
+	replay_frame++;
+	while (cur_step < num_steps && steps[cur_step].frame <= replay_frame) {
+		memcpy((void *)key, steps[cur_step].keys, 128);
+		cur_step++;
+	}
+	if (replay_stop >= 0 && replay_frame >= replay_stop) {
+		if (trace_out)
+			fclose(trace_out);
+		exit(0);
+	}
+}
 
 #define KEYBUF_SIZE 64
 static int keybuf[KEYBUF_SIZE];
@@ -202,6 +332,8 @@ static void pump_events() {
 				break;
 			}
 			int k = sdl_to_allegro(e.key.keysym.scancode);
+			if (replay)
+				break;
 			if (k)
 				key[k] = 1;
 			int next = (keybuf_tail + 1) % KEYBUF_SIZE;
@@ -212,6 +344,8 @@ static void pump_events() {
 			break;
 		}
 		case SDL_KEYUP: {
+			if (replay)
+				break;
 			int k = sdl_to_allegro(e.key.keysym.scancode);
 			if (k)
 				key[k] = 0;
@@ -301,6 +435,8 @@ int allegro_init() {
 		exit(1);
 	}
 	atexit(allegro_exit);
+	if (replay)
+		replay_load();
 	return 0;
 }
 
@@ -389,7 +525,8 @@ void remove_int(void (*proc)()) {
 void rest(long ms) {
 	present(0);
 	pump_events();
-	SDL_Delay((Uint32)ms);
+	if (!replay)
+		SDL_Delay((Uint32)ms);
 }
 
 const char *user_dir() {
@@ -400,6 +537,10 @@ const char *user_dir() {
 }
 
 void wait_frame(int fps) {
+	if (replay) {
+		replay_frame_tick();
+		return;
+	}
 	static Uint64 next;
 	Uint64 freq = SDL_GetPerformanceFrequency();
 	Uint64 step = freq / fps;
