@@ -73,7 +73,7 @@ Missile_o::Missile_o(int X, int Y, int Z, int Speed) : Object(X, Y, Z) {
         speed_x = Speed;
 	speed_y = 0;
         speed_z = 0;
-        direction = (Speed < 0 ? RIGHT_DIR : LEFT_DIR);
+        direction = (Speed < 0 ? LEFT_DIR : RIGHT_DIR);
 
         counter = 0;
 
@@ -97,7 +97,7 @@ int Missile_o::update() {
 	if (energy <= 0)
         	return -1;
 
-        counter += speed_x;
+        counter += abs(speed_x);
 
         if(counter > 600)
         	return -1;

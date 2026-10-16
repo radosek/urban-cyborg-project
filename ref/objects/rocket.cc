@@ -73,7 +73,7 @@ rocket_o::rocket_o(int X, int Y, int Z, int Speed, int Mode) : Object(X, Y, Z, M
         speed_x = mode == MODE_NORMAL ? Speed : Speed / 2;
 	speed_y = 0;
         speed_z = 0;
-        direction = (Speed < 0 ? RIGHT_DIR : LEFT_DIR);
+        direction = (Speed < 0 ? LEFT_DIR : RIGHT_DIR);
 
         counter = 0;
 
@@ -96,7 +96,7 @@ int rocket_o::update() {
 	if (energy <= 0)
         	return -1;
 
-        counter += speed_x;
+        counter += abs(speed_x);
 
         if(counter > 600)
         	return -1;
