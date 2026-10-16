@@ -33,6 +33,33 @@ pub struct Joy {
     pub b: [bool; 8],
 }
 
+struct Display {
+    canvas: Canvas<Window>,
+    _creator: &'static TextureCreator<WindowContext>,
+    texture: Texture<'static>,
+}
+
+fn open_display(video: &sdl2::VideoSubsystem) -> Display {
+    let mut window = video
+        .window("URBAN - The Cyborg Project", (SCREEN_W * 3) as u32, (SCREEN_H * 3) as u32)
+        .position_centered()
+        .resizable()
+        .allow_highdpi()
+        .build()
+        .expect("SDL window");
+    if std::env::var_os("URBAN_FULLSCREEN").is_some() {
+        let _ = window.set_fullscreen(FullscreenType::Desktop);
+    }
+    let mut canvas = window.into_canvas().accelerated().build().expect("SDL renderer");
+    canvas.set_logical_size(SCREEN_W as u32, SCREEN_H as u32).ok();
+    canvas.set_integer_scale(true).ok();
+    let creator: &'static TextureCreator<WindowContext> = Box::leak(Box::new(canvas.texture_creator()));
+    let texture = creator
+        .create_texture_streaming(PixelFormatEnum::ARGB8888, SCREEN_W as u32, SCREEN_H as u32)
+        .expect("SDL texture");
+    Display { canvas, _creator: creator, texture }
+}
+
 struct Sys {
     _sdl: sdl2::Sdl,
     _video: sdl2::VideoSubsystem,
@@ -40,9 +67,8 @@ struct Sys {
     events: sdl2::EventPump,
     controller_sys: sdl2::GameControllerSubsystem,
     pad: Option<GameController>,
-    canvas: Canvas<Window>,
-    _creator: &'static TextureCreator<WindowContext>,
-    texture: Texture<'static>,
+    /// None in headless test runs (URBAN_HEADLESS with URBAN_REPLAY).
+    display: Option<Display>,
     screen: Bitmap,
     pal: Palette,
     pal32: [u32; 256],
@@ -171,24 +197,9 @@ pub fn init() {
     let timer = sdl.timer().expect("SDL timer");
     let controller_sys = sdl.game_controller().expect("SDL gamecontroller");
     sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "0");
-    let mut window = video
-        .window("URBAN - The Cyborg Project", (SCREEN_W * 3) as u32, (SCREEN_H * 3) as u32)
-        .position_centered()
-        .resizable()
-        .allow_highdpi()
-        .build()
-        .expect("SDL window");
-    if std::env::var_os("URBAN_FULLSCREEN").is_some() {
-        let _ = window.set_fullscreen(FullscreenType::Desktop);
-    }
-    let mut canvas = window.into_canvas().accelerated().build().expect("SDL renderer");
-    canvas.set_logical_size(SCREEN_W as u32, SCREEN_H as u32).ok();
-    canvas.set_integer_scale(true).ok();
+    let headless = std::env::var_os("URBAN_HEADLESS").is_some() && std::env::var_os("URBAN_REPLAY").is_some();
+    let display = if headless { None } else { Some(open_display(&video)) };
     sdl.mouse().show_cursor(false);
-    let creator: &'static TextureCreator<WindowContext> = Box::leak(Box::new(canvas.texture_creator()));
-    let texture = creator
-        .create_texture_streaming(PixelFormatEnum::ARGB8888, SCREEN_W as u32, SCREEN_H as u32)
-        .expect("SDL texture");
     let events = sdl.event_pump().expect("SDL events");
 
     let mixer = Arc::new(Mutex::new(MixState::default()));
@@ -217,9 +228,7 @@ pub fn init() {
         events,
         controller_sys,
         pad: None,
-        canvas,
-        _creator: creator,
-        texture,
+        display,
         screen: Bitmap::new(SCREEN_W, SCREEN_H),
         pal: BLACK_PALETTE,
         pal32: [0xff000000; 256],
@@ -360,10 +369,12 @@ pub fn present(force: bool) {
         for (i, &c) in s.screen.data.iter().enumerate() {
             s.argb[i * 4..i * 4 + 4].copy_from_slice(&s.pal32[c as usize].to_le_bytes());
         }
-        s.texture.update(None, &s.argb, (SCREEN_W * 4) as usize).ok();
-        s.canvas.clear();
-        s.canvas.copy(&s.texture, None, None).ok();
-        s.canvas.present();
+        if let Some(d) = s.display.as_mut() {
+            d.texture.update(None, &s.argb, (SCREEN_W * 4) as usize).ok();
+            d.canvas.clear();
+            d.canvas.copy(&d.texture, None, None).ok();
+            d.canvas.present();
+        }
         if let Some(dir) = &s.shot_dir {
             if now.duration_since(s.last_shot) >= Duration::from_secs(1) {
                 s.last_shot = now;
@@ -457,8 +468,8 @@ pub fn pump() {
                 Event::KeyDown { .. } | Event::KeyUp { .. } if s.replay.is_some() => {}
                 Event::KeyDown { scancode: Some(sc), keycode, keymod, repeat, .. } => {
                     if sc == Scancode::Return && keymod.intersects(Mod::LALTMOD | Mod::RALTMOD | Mod::LGUIMOD | Mod::RGUIMOD) {
-                        if !repeat {
-                            let w = s.canvas.window_mut();
+                        if let (false, Some(d)) = (repeat, s.display.as_mut()) {
+                            let w = d.canvas.window_mut();
                             let next = if w.fullscreen_state() == FullscreenType::Off { FullscreenType::Desktop } else { FullscreenType::Off };
                             let _ = w.set_fullscreen(next);
                         }
