@@ -2,6 +2,7 @@
 
 pub mod anim;
 pub mod ai_hero;
+pub mod ai_sci;
 pub mod ai_soldier;
 pub mod airexp;
 pub mod airgren;
