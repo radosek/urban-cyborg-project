@@ -3,3 +3,4 @@ build/
 rust/target/
 .claude/
 dist/
+ref/data/

@@ -101,7 +101,11 @@ fn get_name() -> String {
     NAME.with(|n| {
         let mut name = n.borrow_mut();
         if name.is_empty() {
-            *name = std::env::var("USER").ok().filter(|u| !u.is_empty()).unwrap_or_else(|| "Unknown".to_string());
+            *name = std::env::var("USER")
+                .or_else(|_| std::env::var("USERNAME"))
+                .ok()
+                .filter(|u| !u.is_empty())
+                .unwrap_or_else(|| "Unknown".to_string());
             let cut = name.char_indices().nth(NAME_MAX).map(|(i, _)| i).unwrap_or(name.len());
             name.truncate(cut);
         }

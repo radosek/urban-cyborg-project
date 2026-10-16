@@ -1,7 +1,10 @@
 [package]
 name = "urban"
-version = "0.1.0"
+version = "1.2.0"
 edition = "2024"
+description = "URBAN - The Cyborg Project (1999), ported to Rust"
+license = "GPL-2.0-or-later"
+repository = "https://github.com/radosek/urban-cyborg-project"
 
 [dependencies]
 hound = "3.5"

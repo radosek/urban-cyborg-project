@@ -2,9 +2,9 @@
 
 Paths relative to `ref/`. Source: audit of URBAN 1.2.
 
-I found about 45 real or highly plausible defects in the C++ source; no files were edited. The audit was split across four parallel agents, each told to confirm findings against surrounding code and callers. I merged their reports without re-checking every line myself, and nothing was compiled or run. Paths are under `ref/`.
+About 45 confirmed or highly plausible defects found by reading the C++ source. Fixed ones are tracked in [FIXES.md](FIXES.md).
 
-**PCX claim: confirmed, and it is worse than reported.** `datfile/datfile.cc:116-131` decodes exactly `width` bytes per row and ignores `bytes_per_line`. The padding byte on odd-width images becomes the first pixel of the next row, so images skew. A run-length run that crosses the end of a row also writes past it, and on the last row that is a heap overrun. `color_planes` is read but never used. Correct behaviour: decode `bytes_per_line * planes` bytes per row into a temporary buffer, keep the first `width`, and clamp runs.
+**PCX loader.** `datfile/datfile.cc:116-131` decodes exactly `width` bytes per row and ignores `bytes_per_line`. The padding byte on odd-width images becomes the first pixel of the next row, so images skew. A run-length run that crosses the end of a row also writes past it, and on the last row that is a heap overrun. `color_planes` is read but never used. Correct behaviour: decode `bytes_per_line * planes` bytes per row into a temporary buffer, keep the first `width`, and clamp runs.
 
 ## Bugs, most severe first
 
