@@ -344,14 +344,14 @@ int Seagal_o::update() {
                                 counter2 = 0;
                                 /* fallthrough */
                         case STATE_FIRING:
-                        	current_image = (direction == RIGHT_DIR ? 24 : 20) + (r = anim.next_frame(5, FIRING_DELAY));
+                        	current_image = (direction == RIGHT_DIR ? 24 : 20) + (r = anim.next_frame(3, FIRING_DELAY)); /* Fixed: only 4 shot frames */
 				if (r == 1 && counter2 == 0) {
 					if (direction == RIGHT_DIR)
 						ENGINE.create_object(new Missile_o(x + 70, y + 22, z, 10));
 					else
 						ENGINE.create_object(new Missile_o(x, y + 22, z, -10));
 					counter2 = 1;
-				} else if (r == 5) {
+				} else if (r == 3) {
                                         state = STATE_STOP;
 				}
 				break;
