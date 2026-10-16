@@ -37,6 +37,7 @@
   #include <unistd.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 #include "sound.h"
 #include "config.h"
 #include "scache.h"
@@ -78,6 +79,10 @@ Sound::Sound() {
 	}
 #else
        	soundcard = 1;
+	if (getenv("URBAN_HEADLESS")) {
+		soundcard = 0;
+		return;
+	}
 	/* register all the drivers */
 	MikMod_RegisterAllDrivers();
 	/* MikMod_RegisterDriver(&drv_oss); */
