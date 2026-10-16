@@ -102,7 +102,7 @@ FrosenBody_o::~FrosenBody_o() {
 /**************************************************************************/
 
 void FrosenBody_o::Collision(Object *o) {
-	if ((o->GetWho() == ENEMY_HS_BULLET) ||
-		(o->GetWho() == ENEMY_GRENADE))
+	/* Fixed: explosions, fireballs and plasma shatter frozen bodies too. */
+	if (o->GetWho() & (ENEMY_HS_BULLET | ENEMY_GRENADE | ENEMY_EXPLOSION | ENEMY_FIREBALL | ENEMY_PLASMA))
         	energy = 0;
 }
