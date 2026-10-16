@@ -442,6 +442,8 @@ int allegro_init() {
 	if (getenv("URBAN_MENU_KEYS")) {
 		replay = 1;
 		menu_load();
+		if (getenv("URBAN_FRAMES"))
+			replay_stop = atol(getenv("URBAN_FRAMES"));
 	}
 	return 0;
 }
@@ -574,7 +576,7 @@ void vsync() {
 int set_gfx_mode(int card, int w, int h, int v_w, int v_h) {
 	if (card == GFX_TEXT)
 		return 0;
-	if (!window && !(replay && getenv("URBAN_HEADLESS"))) {
+	if (!window && !getenv("URBAN_HEADLESS")) {
 		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 		window = SDL_CreateWindow("URBAN - The Cyborg Project", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 			w * 3, h * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);

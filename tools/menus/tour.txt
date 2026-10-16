@@ -1,5 +1,3 @@
-# scancode ascii — one key per read. ENTER=28/13 DOWN=80/0 UP=72/0 ESC=1/27
-28 13
 80 0
 80 0
 28 13

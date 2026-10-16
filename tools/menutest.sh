@@ -5,7 +5,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 KEYS=$(cd "$(dirname "${1:-$ROOT/tools/menus/tour.txt}")" && pwd)/$(basename "${1:-tour.txt}")
 OUT=$ROOT/build/menutest; rm -rf "$OUT"; mkdir -p "$OUT/cpp_home" "$OUT/rust_home"
 export SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy URBAN_HEADLESS=1 URBAN_DATA="$ROOT/ref/data"
-export URBAN_MENU_KEYS="$KEYS" URBAN_SEED=1
+export URBAN_MENU_KEYS="$KEYS" URBAN_SEED=1 URBAN_FRAMES=3000
 run() { URBAN_USER_DIR="$OUT/${1}_home" URBAN_TRACE_OUT="$OUT/$1.trace" "$2" -i -s -x >/dev/null 2>"$OUT/$1.log" || true; }
 run cpp "$ROOT/build/urban"
 run rust "$ROOT/rust/target/release/urban"

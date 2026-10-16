@@ -146,7 +146,8 @@ fn screen_hash(s: &Sys) -> u64 {
 
 impl Replay {
     fn empty() -> Replay {
-        Replay { steps: Vec::new(), cur: 0, frame: 0, stop: None, dump: None, dump_dir: None, trace: None }
+        let stop = std::env::var("URBAN_FRAMES").ok().and_then(|v| v.parse().ok());
+        Replay { steps: Vec::new(), cur: 0, frame: 0, stop, dump: None, dump_dir: None, trace: None }
     }
 
     fn load() -> Option<Replay> {
@@ -244,7 +245,7 @@ pub fn init() {
     let timer = sdl.timer().expect("SDL timer");
     let controller_sys = sdl.game_controller().expect("SDL gamecontroller");
     sdl2::hint::set("SDL_RENDER_SCALE_QUALITY", "0");
-    let headless = std::env::var_os("URBAN_HEADLESS").is_some() && std::env::var_os("URBAN_REPLAY").is_some();
+    let headless = std::env::var_os("URBAN_HEADLESS").is_some();
     let display = if headless { None } else { Some(open_display(&video)) };
     sdl.mouse().show_cursor(false);
     let events = sdl.event_pump().expect("SDL events");

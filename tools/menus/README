@@ -1,0 +1,2 @@
+# Menu key scripts: one "scancode ascii" pair per line, no comments (C++ loader uses fscanf).
+# ENTER=28 13, DOWN=80 0, UP=72 0, ESC=1 27
