@@ -74,6 +74,14 @@ jobs:
           path: dist
       - name: Zip
         run: cd dist && for d in */; do (cd "$d" && zip -r "../${d%/}.zip" .); done
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      - name: Release notes
+        run: |
+          f="src/docs/RELEASE-${GITHUB_REF_NAME#v}.md"
+          if [ -f "$f" ]; then cp "$f" notes.md; else echo "URBAN ${GITHUB_REF_NAME}" > notes.md; fi
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
+          body_path: notes.md

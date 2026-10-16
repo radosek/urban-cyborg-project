@@ -35,7 +35,7 @@ fn main() {
         let a = args[i].as_str();
         match a {
             "-h" => {
-                println!("Urban v1.2 (Rust)\nOptions:\n-f<mapname>   Play a specific map\n-x            Disable sound effects\n-s            Disable music\n-b            Disable backgrounds\n-i            Don't show intro\n-h            Show this");
+                println!("Urban v2.0 (Rust)\nOptions:\n-f<mapname>   Play a specific map\n-x            Disable sound effects\n-s            Disable music\n-b            Disable backgrounds\n-i            Don't show intro\n-h            Show this");
                 return;
             }
             "-s" => flags::set_sound(false),
