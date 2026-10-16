@@ -22,7 +22,7 @@ into a folder named `data` next to the `urban` executable (or set `URBAN_DATA=/p
 
 ## Download
 
-Prebuilt binaries for Windows, Linux and macOS are attached to each
+Prebuilt binaries for Windows, Linux and macOS (universal URBAN.app) are attached to each
 [release](https://github.com/radosek/urban-cyborg-project/releases), and to every CI run.
 
 ## Build from source

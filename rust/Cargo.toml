@@ -1,6 +1,6 @@
 [package]
 name = "urban"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2024"
 description = "URBAN - The Cyborg Project (1999), ported to Rust"
 license = "GPL-2.0-or-later"

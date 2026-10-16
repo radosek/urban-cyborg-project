@@ -957,6 +957,14 @@ pub fn user_dir() -> PathBuf {
 }
 
 /// Directory holding urban.dat, levels.dat, intro.dat and snd/.
+/// Tells the player where to put the game data (shown when it is missing).
+pub fn missing_data_message() -> String {
+    format!(
+        "URBAN needs the original game data.\n\nDownload the 1999 release (URBAN-The-Cyborg-Project_DOS_EN.zip) and copy\nurban.dat, levels.dat, intro.dat and the snd folder into:\n\n{}\n\n(or a folder named \"data\" next to the program).",
+        user_dir().join("data").display()
+    )
+}
+
 pub fn data_dir() -> PathBuf {
     if let Some(d) = std::env::var_os("URBAN_DATA") {
         return PathBuf::from(d);
@@ -965,11 +973,14 @@ pub fn data_dir() -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
             candidates.push(dir.join("data"));
+            // Also next to a macOS URBAN.app bundle (URBAN.app/Contents/MacOS/urban).
             for up in dir.ancestors().take(5) {
+                candidates.push(up.join("data"));
                 candidates.push(up.join("ref").join("data"));
             }
         }
     }
+    candidates.push(user_dir().join("data"));
     candidates.push(PathBuf::from("data"));
     candidates.push(PathBuf::from("../ref/data"));
     candidates.into_iter().find(|d| d.join("urban.dat").exists()).unwrap_or_else(|| PathBuf::from("data"))

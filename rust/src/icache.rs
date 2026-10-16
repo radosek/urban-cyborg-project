@@ -20,7 +20,10 @@ thread_local! {
 pub fn init() {
     let path = crate::sys::data_dir().join("urban.dat");
     let dat = Datfile::open(&path).unwrap_or_else(|e| {
-        eprintln!("{}", e);
+        let msg = crate::sys::missing_data_message();
+        eprintln!("{}\n\n({})", msg, e);
+        let _ = std::fs::create_dir_all(crate::sys::user_dir().join("data"));
+        let _ = sdl2::messagebox::show_simple_message_box(sdl2::messagebox::MessageBoxFlag::ERROR, "URBAN", &msg, None);
         std::process::exit(6)
     });
     CACHE.with(|c| *c.borrow_mut() = Some(Cache { dat, images: HashMap::new() }));
