@@ -381,7 +381,7 @@ static void pump_events() {
 }
 
 static void present(int force) {
-	if (!screen || !renderer)
+	if (!screen || !renderer || !texture)
 		return;
 	Uint64 now = SDL_GetTicks64();
 	if (!force && now - last_present < 8)
@@ -564,7 +564,7 @@ void vsync() {
 int set_gfx_mode(int card, int w, int h, int v_w, int v_h) {
 	if (card == GFX_TEXT)
 		return 0;
-	if (!window) {
+	if (!window && !(replay && getenv("URBAN_HEADLESS"))) {
 		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 		window = SDL_CreateWindow("URBAN - The Cyborg Project", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 			w * 3, h * 3, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
@@ -589,7 +589,7 @@ int set_gfx_mode(int card, int w, int h, int v_w, int v_h) {
 			SDL_DestroyTexture(texture);
 		free(argb);
 		screen = create_bitmap(w, h);
-		texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, w, h);
+		texture = !renderer ? NULL : SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, w, h);
 		argb = (uint32_t *)malloc(w * h * 4);
 	}
 	clear(screen);

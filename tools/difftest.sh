@@ -10,6 +10,8 @@ FRAMES=${3:-1500}
 SEED=${4:-12345}
 OUT=${DIFF_OUT:-$ROOT/build/difftest}
 mkdir -p "$OUT"
+# Headless: no window or sound device during tests.
+export SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy URBAN_HEADLESS=1
 export URBAN_REPLAY="$SCRIPT" URBAN_SEED=$SEED URBAN_FRAMES=$FRAMES URBAN_DATA="$ROOT/ref/data"
 
 run() { # name binary
