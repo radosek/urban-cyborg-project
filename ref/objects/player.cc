@@ -738,7 +738,7 @@ int player_o::update() {
 						else
                                                 	tmp = x - 32 * (i + 1);
 
-						if (ENGINE.check_wall(x, y + 32, z))
+						if (ENGINE.check_wall(tmp, y + 32, z))
                                                 	break;
 
                                 		ENGINE.create_object(new Beam_o(tmp, y + 32, z, friends));
