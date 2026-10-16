@@ -847,7 +847,7 @@ void Engine::NewGame() {
 	}
 	for(i = 0; i < num_alwaysupdate; i++) {
 
-        	delete objects[i];
+        	delete alwaysupdate[i]; /* Fixed: deleted objects[i] again (double delete) */
 	}
         player = NULL;
 	for (i = 0;i < num_effects;i++) {
@@ -907,6 +907,7 @@ int Engine::play_level(char *map_name, struct PlayerData *p_dat, int controls) {
 		delete alwaysupdate[i];
 
 	}
+	num_alwaysupdate = 0; /* Fixed: count was never reset (use after free) */
 	if(player != NULL) {
 		num_objects = 1;
 		objects[0] = player;

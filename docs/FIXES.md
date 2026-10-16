@@ -26,6 +26,9 @@ against the original sprites or code, and then applied to both builds.
 | 34 | Seagal | Firing animation ran to frame 5 with only 4 shot frames | 4 frames |
 | 33 | Frozen body | Only bullets and grenades shattered it; explosions, fireballs and plasma passed through | All of them shatter it |
 | 3 | Engine | Innerlayer (doors/elevators/wires) array of 100 overflowed: level 6-3 has 114 entries, writing past the array | No fixed cap (C++ reference: 400) |
+| 1, 2 | Engine | Starting a new game deleted the object list twice and never cleared the always-update list: **crash when starting a second game** (reproduced: the C++ build segfaults after finishing the campaign and pressing START GAME) | Correct lists deleted and reset |
+| 17 | FLI player (Unix build only) | Word-run fill wrote a 16-bit value at every byte offset (one byte past the run) | Correct fill; Rust matches an independent decoder on all 116 intro frames |
+| — | FLI player (Unix build only) | Copied the whole frame every time, unlike Allegro's player in the DOS game, which copies only changed rows (subtitle pixels persist outside them) | Dirty-row copy, as Allegro 3.11 |
 
 ## Fixed in the Rust port, not yet reached by the replay tests
 
@@ -33,12 +36,11 @@ From the audit and the porting work. These are in the Rust code; the random test
 triggered them yet, so they haven't been mirrored into the C++ reference.
 
 **Crashes and memory safety (impossible in the Rust port by construction, listed for completeness)**
-- #1, #2: level/new-game cleanup reused freed objects and double-deleted always-update objects (airstrikes).
 - #4–#9: map loader overflows on long rows, too many tiles or options; EOF and CRLF crashes; off-by-one edge reads; `TileInfo[-1]` read on every gravity check over empty tiles; mixed `free`/`delete`.
 - #10, #11: player's elevator pointer and controller left uninitialised (crash on first fire or unknown controller type → now keyboard).
 - #12: tank boss attack state (`cmc`, `aim`, `aif`, `cluster_counter`) carried over to the next fight and indexed past its array.
 - #13–#16: save games: inverted write check, unchecked reads, uninitialised slot name, unbounded level index, `USER` name overflow.
-- #17: FLI player: SS2 chunk decoded wrongly and overran; unknown chunks desynced the stream (new decoder).
+- #17 (rest): unknown FLI chunks desynced the stream; oversized frames and palette indices unchecked (new decoder).
 - #18: body parts spawned inside walls leaked.
 - PCX loader ignored `bytes_per_line` padding: odd-width images skewed and could overrun.
 
