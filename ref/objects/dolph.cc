@@ -280,7 +280,7 @@ int Dolph_o::update() {
                                 	jump_armed = 0;
 				}
         	                counter = 5;
-                	        current_image = (direction == RIGHT_DIR ? 29 : 27);
+                	        current_image = (direction == RIGHT_DIR ? 31 : 29);
                         	break;
 	        	case STATE_WALK:
         	        	switch (direction) {
