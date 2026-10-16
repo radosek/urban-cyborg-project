@@ -224,4 +224,14 @@ void simulate_keypress(int k);
 void keyboard_update();
 void keyboard_reset();
 
+/* Per-user writable directory for config, saves and highscores, with trailing separator. */
+const char *user_dir();
+
+/* Sleeps until the next frame boundary at the given rate (replaces SIGALRM pacing). */
+void wait_frame(int fps);
+
+/* FLI playback lives in gfx/flc.cc. */
+int play_fli(char *filename, BITMAP *bmp, int loop, int (*callback)());
+int play_memory_fli(void *fli_data, BITMAP *bmp, int loop, int (*callback)());
+
 #endif

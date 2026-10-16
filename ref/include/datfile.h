@@ -3,16 +3,17 @@
 
 #include <allegro.h>
 #include <stdio.h>
+#include <stdint.h>
 
 struct dat_entry {
 	char filename[120];
-        long size, offset;
+        int32_t size, offset;
 };
 
 struct header {
-	long magic;
-        long dat_start;
-        long num_entries;
+	int32_t magic;
+        int32_t dat_start;
+        int32_t num_entries;
 };
 
 class datfile {

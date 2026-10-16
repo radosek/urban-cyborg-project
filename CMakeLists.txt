@@ -38,3 +38,5 @@ target_include_directories(urban PRIVATE port ${REF}/include)
 target_compile_definitions(urban PRIVATE __DISTRIBUTION__)
 target_compile_options(urban PRIVATE -fpermissive -Wno-write-strings -w)
 target_link_libraries(urban PRIVATE SDL2::SDL2 PkgConfig::MIKMOD Threads::Threads)
+add_custom_command(TARGET urban POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E create_symlink ${REF}/data $<TARGET_FILE_DIR:urban>/data)

@@ -949,17 +949,6 @@ int Engine::play_level(char *map_name, struct PlayerData *p_dat, int controls) {
 	install_int(testframe, 1000);
 
 	install_int(update_screen, 1000/FRAMESPERSEC);
-#else
-	signal(SIGALRM, update_screen);
-
-	struct itimerval tval, oldval;
-
-	tval.it_interval.tv_sec = 0;
-	tval.it_interval.tv_usec = 1000000/FRAMESPERSEC;
-	tval.it_value.tv_sec = 0;
-	tval.it_value.tv_usec = 1000000/FRAMESPERSEC;
-
-	setitimer(ITIMER_REAL, &tval, &oldval);
 #endif
 //	CLEAR_MESSAGES;
 	for (i = 0;i < num_messages;i++)
@@ -1004,7 +993,6 @@ int Engine::play_level(char *map_name, struct PlayerData *p_dat, int controls) {
 	remove_int(testframe);
 	remove_int(update_screen);
 #else
-	setitimer(ITIMER_REAL, &oldval, NULL);
 	clear_keybuf();
 #endif
 	return return_code;
@@ -1277,7 +1265,7 @@ int Engine::display_map() {
 	else if (config->keyconf.gfx_quality == QUALITY_HIGH)
         	vsync();
 #else
-		while (show_next_frame == 0) usleep(10);
+		wait_frame(FRAMESPERSEC);
 #endif
 
 	show_next_frame = 0;

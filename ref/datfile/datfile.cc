@@ -5,11 +5,10 @@
 #include "icache.h"
 #include "game.h"
 
-#ifdef DJGPP
-typedef unsigned char uint8;
-typedef unsigned long uint32;
-typedef signed long sint32;
-#endif
+#include <stdint.h>
+typedef uint8_t uint8;
+typedef uint32_t uint32;
+typedef int32_t sint32;
 
 struct pcx_header {
 	uint8 manufacturer		__attribute__((packed));

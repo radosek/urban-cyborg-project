@@ -71,6 +71,7 @@ void Gamepad_ctrl::set_key(int val, volatile int **key) {
                         break;
 		case JOYSTICK_B8:
                 	*key = &joy_b8;
+			break;
 		default:
                 	*key = NULL;
                 	break;

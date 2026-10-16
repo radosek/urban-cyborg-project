@@ -34,6 +34,7 @@
 #else
   #include <mikmod.h>
   #include <pthread.h>
+  #include <unistd.h>
 #endif
 #include <stdio.h>
 #include "sound.h"
@@ -49,7 +50,7 @@ extern "C" {
 	void *module_thread(void *arg) {
 	   	while(1) {
 	     		MikMod_Update();
-			usleep(10);
+			usleep(2000);
 		}
 		return NULL;
 	};
@@ -78,8 +79,8 @@ Sound::Sound() {
 #else
        	soundcard = 1;
 	/* register all the drivers */
-	/*MikMod_RegisterAllDrivers();*/
-	MikMod_RegisterDriver(&drv_oss);
+	MikMod_RegisterAllDrivers();
+	/* MikMod_RegisterDriver(&drv_oss); */
      
 	setenv("MM_FRAGSIZE", "10", 1);
    
@@ -87,8 +88,8 @@ Sound::Sound() {
 	MikMod_RegisterAllLoaders();
      
 	/* initialize the library */
-	md_mode = DMODE_SOFT_SNDFX | DMODE_SOFT_MUSIC | DMODE_16BITS;
-	md_mixfreq = 22050;
+	md_mode = DMODE_SOFT_SNDFX | DMODE_SOFT_MUSIC | DMODE_16BITS | DMODE_STEREO | DMODE_HQMIXER;
+	md_mixfreq = 44100;
         
 	if(MikMod_Init("")) {
         	fprintf(stderr,"Could not initialize sound, reason: %s\n",

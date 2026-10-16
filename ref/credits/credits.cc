@@ -72,50 +72,27 @@ struct CreditsInfo {
         int erase_title;
 } _ci[] = {
 {"PROGRAMMING",
-"THOMAS
-NYBERG", 0},
+"THOMAS\nNYBERG", 0},
 {"PROGRAMMING",
-"  JONAS
-BORGSTROM", 1},
+"  JONAS\nBORGSTROM", 1},
 {"GRAPHICS",
-"  DICK
-ADOLFSSON", 1},
+"  DICK\nADOLFSSON", 1},
 {"DESIGN",
-" PETTER
-HOLMBERG", 0},
+" PETTER\nHOLMBERG", 0},
 {"DESIGN",
-"MARKUS
-BOMAN", 1},
+"MARKUS\nBOMAN", 1},
 {"SOUND",
-"  EMIL
-ERIKSSON", 0},
+"  EMIL\nERIKSSON", 0},
 {"SOUND",
-"RICHARD
-BERGMARK", 1},
+"RICHARD\nBERGMARK", 1},
 {"MUSIC",
-"SAMUEL
-PERSSON", 1},
+"SAMUEL\nPERSSON", 1},
 };
 
 #define NUMCI ((signed)(sizeof(_ci) / sizeof(_ci[0])))
 
 char *special_thanks =
-"
- SPECIAL THANKS
-
- PER JONNY KACK
-  TOR SANDEN
-MARKUS WILLANDER
-    UFFEMAN
-    HASSEMAN
-  ANNA NORBERG
-
-    DESCENT
-
- AND OURSELVES
-
-      NOW
-  PLAY URBAN";
+"\n SPECIAL THANKS\n\n PER JONNY KACK\n  TOR SANDEN\nMARKUS WILLANDER\n    UFFEMAN\n    HASSEMAN\n  ANNA NORBERG\n\n    DESCENT\n\n AND OURSELVES\n\n      NOW\n  PLAY URBAN";
 
 
 uchar lightmap[256 * 256] = {};
@@ -141,7 +118,7 @@ static void InitLightmap() {
                         	nz = 0;
 
 			lightmap[x + y * 256] =
-                        	(uchar)(255 <? nz * 191 + nz * nz * nz * nz * nz * nz * nz * nz * nz * 64);
+                        	(uchar)(255 < (nz * 191 + nz * nz * nz * nz * nz * nz * nz * nz * nz * 64) ? 255 : (nz * 191 + nz * nz * nz * nz * nz * nz * nz * nz * nz * 64));
 		}
 }
 

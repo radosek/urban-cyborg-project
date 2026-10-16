@@ -192,7 +192,7 @@ void HighScore::Open() {
 #else
 	char filename[1024];
 
-	sprintf(filename, "%s/.urban/hs.dat", getenv("HOME"));
+	sprintf(filename, "%shs.dat", user_dir());
 
         if((fd = fopen(filename, "rb")) == NULL)
 #endif
@@ -214,11 +214,7 @@ void HighScore::Save() {
 #else
 	char filename[1024];
 
-	/* Create dir */
-	sprintf(filename, "%s/.urban", getenv("HOME"));
-	mkdir(filename, S_IRUSR | S_IWUSR | S_IXUSR);
-
-	sprintf(filename, "%s/.urban/hs.dat", getenv("HOME"));
+	sprintf(filename, "%shs.dat", user_dir());
 
         if((fd = fopen(filename, "wb")) == NULL)
 #endif

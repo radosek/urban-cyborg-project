@@ -123,7 +123,7 @@ int MenuChoice(int alternative){
 	return 1;
 }
 /*****************************************************************************************/
-int Do_Menu(char *text, int num_items, int pos = 1) {
+int Do_Menu(char *text, int num_items, int pos) {
 	PALETTE pal;
 	UrbanFont m(LARGE_FONT);
         m.SetScale(65);
@@ -193,7 +193,7 @@ void LoadGame() {
 #ifdef DJGPP	
 	sprintf(filename, "savegame.dat");
 #else	
-	sprintf(filename, "%s/.urban/savegame.dat", getenv("HOME"));
+	sprintf(filename, "%ssavegame.dat", user_dir());
 #endif
         if ((fs = fopen(filename, "rb")) == NULL) {
         	for (int i = 0; i < 5;i++) {
@@ -201,11 +201,7 @@ void LoadGame() {
 			memcpy(&SavedGames[i].dat, &DefaultPData, sizeof(struct PlayerData));
                 }
 #ifndef DJGPP
-		/* Create dir */
-		sprintf(filename, "%s/.urban", getenv("HOME"));
-		mkdir(filename, S_IRUSR | S_IWUSR | S_IXUSR);
-
-		sprintf(filename, "%s/.urban/savegame.dat", getenv("HOME"));
+		sprintf(filename, "%ssavegame.dat", user_dir());
 #endif
                 if((fs = fopen(filename, "wb")) != NULL) {
 

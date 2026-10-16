@@ -69,43 +69,43 @@ FILE *debugfile = NULL;
 
 
 struct flc_header {
-	unsigned long size		__attribute__((packed));
+	uint32_t size		__attribute__((packed));
         unsigned short magic		__attribute__((packed));
         unsigned short n_frames		__attribute__((packed));
         unsigned short width		__attribute__((packed));
         unsigned short height		__attribute__((packed));
         unsigned short depth		__attribute__((packed));
         unsigned short flags		__attribute__((packed));
-        unsigned long speed		__attribute__((packed));
+        uint32_t speed		__attribute__((packed));
         short res0		__attribute__((packed));
-        long c_time		__attribute__((packed));
-        long res3		__attribute__((packed));
-        long res4		__attribute__((packed));
-        long res5		__attribute__((packed));
+        int32_t c_time		__attribute__((packed));
+        int32_t res3		__attribute__((packed));
+        int32_t res4		__attribute__((packed));
+        int32_t res5		__attribute__((packed));
         short aspectx		__attribute__((packed));
         short aspecty		__attribute__((packed));
         char res[38]		__attribute__((packed));
-        long oframe1		__attribute__((packed));
-        long oframe2		__attribute__((packed));
+        int32_t oframe1		__attribute__((packed));
+        int32_t oframe2		__attribute__((packed));
         char res2[40]		__attribute__((packed));
 };
 
 struct prefix_chunk {
-	long size		__attribute__((packed));
+	int32_t size		__attribute__((packed));
         short type		__attribute__((packed));
         short n_chunks		__attribute__((packed));
         char res[8]		__attribute__((packed));
 };
 
 struct frame_chunk {
-	long size		__attribute__((packed));
+	int32_t size		__attribute__((packed));
         short type		__attribute__((packed));
         short n_chunks		__attribute__((packed));
         char res[8]		__attribute__((packed));
 };
 
 struct frame_header {
-	long size		__attribute__((packed));
+	int32_t size		__attribute__((packed));
         short type		__attribute__((packed));
 };
 

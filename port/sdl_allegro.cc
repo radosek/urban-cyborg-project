@@ -2,6 +2,7 @@
 #include <SDL.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "allegro.h"
 #include "font8x8_basic.h"
 
@@ -25,6 +26,11 @@ static uint32_t pal32[PAL_SIZE];
 static uint32_t *argb;
 static Uint64 last_present;
 static int text_bg = 0;
+static const char *shot_dir = getenv("URBAN_SHOTS");
+static Uint64 last_shot;
+static int shot_n;
+static int autoplay = getenv("URBAN_AUTOPLAY") != NULL;
+static Uint64 last_auto;
 
 #define KEYBUF_SIZE 64
 static int keybuf[KEYBUF_SIZE];
@@ -181,6 +187,8 @@ static void toggle_fullscreen() {
 	SDL_SetWindowFullscreen(window, (f & SDL_WINDOW_FULLSCREEN_DESKTOP) ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
 }
 
+void simulate_keypress(int k);
+
 static void pump_events() {
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
@@ -222,6 +230,20 @@ static void pump_events() {
 		}
 	}
 	update_pad();
+	if (autoplay) {
+		Uint64 t = SDL_GetTicks64() / 100;
+		int phase = (int)(t % 30);
+		if (phase == 0 && t != last_auto) {
+			simulate_keypress((KEY_ENTER << 8) | '\r');
+			key[KEY_ENTER] = 1;
+		} else if (phase == 1) {
+			key[KEY_ENTER] = 0;
+		}
+		key[KEY_RIGHT] = 1;
+		key[KEY_LCONTROL] = (phase % 4) < 2;
+		key[KEY_ALT] = phase == 10;
+		last_auto = t;
+	}
 }
 
 static void present(int force) {
@@ -240,6 +262,14 @@ static void present(int force) {
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
 	SDL_RenderPresent(renderer);
 	retrace_count++;
+	if (shot_dir && now - last_shot >= 1000) {
+		char path[4096];
+		snprintf(path, sizeof(path), "%s/shot%04d.bmp", shot_dir, shot_n++);
+		SDL_Surface *surf = SDL_CreateRGBSurfaceWithFormatFrom(argb, screen->w, screen->h, 32, screen->w * 4, SDL_PIXELFORMAT_ARGB8888);
+		SDL_SaveBMP(surf, path);
+		SDL_FreeSurface(surf);
+		last_shot = now;
+	}
 }
 
 void keyboard_update() {
@@ -251,6 +281,20 @@ void keyboard_reset() {
 }
 
 /**************************************************************************/
+__attribute__((constructor(101))) static void enter_data_dir() {
+	const char *env = getenv("URBAN_DATA");
+	if (env && chdir(env) == 0)
+		return;
+	char *base = SDL_GetBasePath();
+	if (base) {
+		char path[4096];
+		snprintf(path, sizeof(path), "%sdata", base);
+		SDL_free(base);
+		if (chdir(path) == 0)
+			return;
+	}
+}
+
 int allegro_init() {
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) < 0) {
 		fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
@@ -346,6 +390,28 @@ void rest(long ms) {
 	present(0);
 	pump_events();
 	SDL_Delay((Uint32)ms);
+}
+
+const char *user_dir() {
+	static char *dir;
+	if (!dir)
+		dir = SDL_GetPrefPath("", "urban");
+	return dir ? dir : "./";
+}
+
+void wait_frame(int fps) {
+	static Uint64 next;
+	Uint64 freq = SDL_GetPerformanceFrequency();
+	Uint64 step = freq / fps;
+	Uint64 now = SDL_GetPerformanceCounter();
+	if (!next || now > next + step * 4)
+		next = now;
+	next += step;
+	while ((now = SDL_GetPerformanceCounter()) < next) {
+		Uint64 left_ms = (next - now) * 1000 / freq;
+		if (left_ms > 1)
+			SDL_Delay((Uint32)(left_ms - 1));
+	}
 }
 
 void vsync() {

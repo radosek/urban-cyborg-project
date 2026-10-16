@@ -24,7 +24,7 @@ void Config::Load() {
 #ifdef DJGPP
 	sprintf(filename, "ctrl.dat");
 #else
-	sprintf(filename, "%s/.urban/ctrl.dat", getenv("HOME"));
+	sprintf(filename, "%sctrl.dat", user_dir());
 #endif
 
         if(!(fd = fopen(filename, "rb")))
@@ -42,11 +42,7 @@ void Config::Save() {
 #ifdef DJGPP
 	sprintf(filename, "ctrl.dat");
 #else
-	/* Create dir */
-	sprintf(filename, "%s/.urban", getenv("HOME"));
-	mkdir(filename, S_IRUSR | S_IWUSR | S_IXUSR);
-
-	sprintf(filename, "%s/.urban/ctrl.dat", getenv("HOME"));
+	sprintf(filename, "%sctrl.dat", user_dir());
 #endif
         if(!(fd = fopen(filename, "wb")))
         	return;

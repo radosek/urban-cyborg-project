@@ -263,7 +263,7 @@ int NewGame(int slot) {
 #ifdef DJGPP
 	sprintf(filename, "savegame.dat");
 #else
-	sprintf(filename, "%s/.urban/savegame.dat", getenv("HOME"));
+	sprintf(filename, "%ssavegame.dat", user_dir());
 #endif
 
         if ((fs = fopen(filename, "rb")) == NULL) {
@@ -274,11 +274,7 @@ int NewGame(int slot) {
 			memcpy(&SavedGames[i].dat, &DefaultPData, sizeof(struct PlayerData));
                 }
 #ifndef DJGPP
-		/* Create dir */
-		sprintf(filename, "%s/.urban", getenv("HOME"));
-		mkdir(filename, S_IRUSR | S_IWUSR | S_IXUSR);
-
-		sprintf(filename, "%s/.urban/savegame.dat", getenv("HOME"));
+		sprintf(filename, "%ssavegame.dat", user_dir());
 #endif
                 if((fs = fopen(filename, "wb")) == NULL)
 	        	fwrite(SavedGames, 1, 5 * sizeof(struct SaveGameData), fs);
@@ -337,11 +333,7 @@ int NewGame(int slot) {
 #ifdef DJGPP
 						sprintf(filename, "savegame.dat");
 #else
-						/* Create dir */
-						sprintf(filename, "%s/.urban", getenv("HOME"));
-						mkdir(filename, S_IRUSR | S_IWUSR | S_IXUSR);
-
-						sprintf(filename, "%s/.urban/savegame.dat", getenv("HOME"));
+						sprintf(filename, "%ssavegame.dat", user_dir());
 #endif
 					        if ((fs = fopen(filename, "wb")) != NULL) {
 					        	fwrite(SavedGames, 1, 5 * sizeof(struct SaveGameData), fs);

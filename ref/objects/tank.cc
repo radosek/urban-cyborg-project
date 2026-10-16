@@ -53,9 +53,9 @@ char *comments[] = {
 "samples/olvictor.wav"};
 
 
-#define __URK ((NUM_SKADA - 1) - (energy <? (MAX_ENERGY - 1)) / (MAX_ENERGY / NUM_SKADA))
+#define __URK ((NUM_SKADA - 1) - (energy < (MAX_ENERGY - 1) ? energy : (MAX_ENERGY - 1)) / (MAX_ENERGY / NUM_SKADA))
 
-#define IMAGE(x) ((x) + 3 * (__URK <? 3))
+#define IMAGE(x) ((x) + 3 * (__URK < 3 ? __URK : 3))
 #define FROMIMAGE(x) ((x) % 3)
 
 #define STATE_NONE		0
