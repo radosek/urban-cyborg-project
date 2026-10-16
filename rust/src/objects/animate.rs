@@ -7,6 +7,7 @@ use crate::icache;
 const MAX_Y_SPEED: i32 = 4;
 const Y_ACCEL: i32 = 1;
 
+#[derive(Clone)]
 pub struct Animation {
     pub base: Base,
     anim: Anim,
@@ -51,8 +52,12 @@ impl Obj for Animation {
         b.current_image = self.anim.next_frame(n, 8);
         if b.current_image == n {
             if self.dekoration_frame != -1 {
+                // The original inserted itself into the decoration list and stayed in the
+                // effect list for one more frame (drawn twice), then left the effects.
                 b.current_image = self.dekoration_frame;
-                return Upd::ToDekoration;
+                b.state = 1;
+                g.create_dekoration(self.clone());
+                return Upd::Keep;
             }
             return Upd::Delete;
         }

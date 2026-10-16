@@ -1086,7 +1086,7 @@ void player_o::Collision(Object *o) {
 	                        counter4 = TOUCH_DELAY;
  		}
 	}
-	if(energy < 0) {
+	if(energy <= 0) {
         	if (o->GetWho() & ENEMY_EXPLOSION) {
                 	tmp = DEATH_EXPLOSION;
 		} else if (o->GetWho() & ENEMY_FIREBALL) {

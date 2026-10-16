@@ -269,7 +269,7 @@ void Einstein_o::Collision(Object *o) {
                 	if (direction == RIGHT_DIR) {
 				ENGINE.create_effect(new Animation_o(x, y + height, z, "prof2/prof2h/dead", 7, 6));
 				for (i = 0;i < 7;i++)
-				        ENGINE.create_effect(new blood_o(x + width / 2, y + random() % height, z, - 2 + random() % 4));
+				        ENGINE.create_effect(new blood_o(x + width / 2, y + random() % height, z, -(2 + random() % 4)));
 			} else {
 				ENGINE.create_effect(new Animation_o(x, y + height, z, "prof2/prof2v/dead", 7, 6));
 				for (i = 0;i < 7;i++)
