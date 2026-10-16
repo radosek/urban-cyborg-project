@@ -719,7 +719,8 @@ impl Obj for Player {
                 self.fire(g);
             } else if self.ctrl.fire() && dir == UP_DIR {
                 if let Some(id) = self.elev_station {
-                    with_obj::<ElevatorStation, _>(g, id, |s, g| s.start_elevator(g));
+                    let me: &Player = self;
+                    with_obj::<ElevatorStation, _>(g, id, |s, g| s.start_elevator_for(me, g));
                 }
             }
         }
