@@ -939,8 +939,8 @@ static void menu_load() {
 	while (num_menu_keys < 4096 && fscanf(f, "%d %d", &sc, &ascii) == 2)
 		menu_keys[num_menu_keys++] = (sc << 8) | ascii;
 	fclose(f);
-	if (getenv("URBAN_TRACE_OUT"))
-		menu_trace = fopen(getenv("URBAN_TRACE_OUT"), "w");
+	if (getenv("URBAN_MENU_TRACE"))
+		menu_trace = fopen(getenv("URBAN_MENU_TRACE"), "w");
 }
 
 static uint64_t screen_hash() {

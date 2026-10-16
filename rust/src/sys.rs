@@ -124,7 +124,7 @@ impl MenuKeys {
         Some(MenuKeys {
             keys,
             cur: 0,
-            trace: std::env::var_os("URBAN_TRACE_OUT").and_then(|p| std::fs::File::create(p).ok()),
+            trace: std::env::var_os("URBAN_MENU_TRACE").and_then(|p| std::fs::File::create(p).ok()),
             dump: std::env::var("URBAN_DUMP").ok().and_then(|v| v.parse().ok()),
             dump_dir: std::env::var_os("URBAN_DUMP_DIR").map(PathBuf::from),
         })

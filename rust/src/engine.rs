@@ -1313,8 +1313,8 @@ impl Game {
                     match crate::objects::spawn(t, x, y, k, self.control_type) {
                         Some(crate::objects::Spawn::Player(p)) => {
                             if let Some(existing) = self.player.as_deref_mut() {
-                                let b = p.base();
-                                existing.move_to(b.x, b.y, b.z);
+                                // MoveTo takes the raw tile position (it applies the -66 itself).
+                                existing.move_to(x, y, k * TILE_TOP_HEIGHT + (TILE_TOP_HEIGHT >> 1));
                             } else {
                                 self.player = Some(p);
                                 self.objects.push(Slot::Player);
