@@ -11,8 +11,11 @@ for b in cpp rust; do
 	URBAN_RNG_TRACE=1 URBAN_STATE_FRAME=$F "$bin" -x -s -f "$MAP" 2> "$OUT/$b.err" >/dev/null
 	grep '^RNG' "$OUT/$b.err" | c++filt | sed -E 's/\+[0-9]+$//; s/:[0-9]+$//' > "$OUT/$b.rng"
 	grep '^S' "$OUT/$b.err" > "$OUT/$b.state"
+	grep '^C' "$OUT/$b.err" > "$OUT/$b.coll"
 done
 echo "RNG calls: cpp $(wc -l < "$OUT/cpp.rng") rust $(wc -l < "$OUT/rust.rng")"
 paste -d'|' "$OUT/cpp.rng" "$OUT/rust.rng" | awk -F'|' '{split($1,a," "); split($2,b," "); if (a[2]!=b[2]) {print "RNG count mismatch at line " NR; exit}}'
 echo "--- state diff at frame $F (cpp < > rust)"
 diff "$OUT/cpp.state" "$OUT/rust.state" | head -20
+echo "--- collision pairs (cpp < > rust)"
+diff "$OUT/cpp.coll" "$OUT/rust.coll" | head -20

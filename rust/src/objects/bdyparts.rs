@@ -13,7 +13,6 @@ const STATE_DESTROY: i32 = 1;
 pub struct Bodyparts {
     pub base: Base,
     anim: Anim,
-    spawn_checked: bool,
 }
 
 impl Bodyparts {
@@ -31,26 +30,26 @@ impl Bodyparts {
         b.speed_z = speed_z;
         b.direction = if speed_x > 0 { RIGHT_DIR } else { LEFT_DIR };
         b.state = STATE_NONE;
-        Bodyparts { base: b, anim: Anim::default(), spawn_checked: false }
+        Bodyparts { base: b, anim: Anim::default() }
     }
 }
 
 impl Obj for Bodyparts {
     crate::obj_boilerplate!();
 
+    fn spawned(&mut self, g: &mut Game) {
+        let b = &mut self.base;
+        if g.check_floor(b.x, b.y + b.height, b.z)
+            || g.check_floor(b.x + b.width, b.y + b.height, b.z)
+            || g.check_wall(b.x, b.y + b.height, b.z)
+            || g.check_wall(b.x + b.width, b.y + b.height, b.z)
+        {
+            b.state = STATE_DESTROY;
+        }
+    }
+
     fn update(&mut self, g: &mut Game) -> Upd {
         let b = &mut self.base;
-        // The C++ constructor ran this test; it needs the map, so it runs before the first update.
-        if !self.spawn_checked {
-            self.spawn_checked = true;
-            if g.check_floor(b.x, b.y + b.height, b.z)
-                || g.check_floor(b.x + b.width, b.y + b.height, b.z)
-                || g.check_wall(b.x, b.y + b.height, b.z)
-                || g.check_wall(b.x + b.width, b.y + b.height, b.z)
-            {
-                b.state = STATE_DESTROY;
-            }
-        }
         if b.state == STATE_DESTROY {
             return Upd::Delete;
         }

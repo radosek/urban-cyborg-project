@@ -333,6 +333,9 @@ pub trait Obj: Any {
     fn update(&mut self, _g: &mut Game) -> Upd {
         Upd::Keep
     }
+    /// Runs when the object is handed to the engine, i.e. where the C++ constructor had
+    /// engine side effects (earthquakes, spawning child objects, map checks).
+    fn spawned(&mut self, _g: &mut Game) {}
     /// Called for each overlapping pair. When `other` is the player, `g.player` is unavailable;
     /// use `other` (or `player_of(other, g)`) instead.
     fn collision(&mut self, other: &mut dyn Obj, _g: &mut Game) {
@@ -517,7 +520,8 @@ impl Game {
         self.create_object_box(Box::new(o));
     }
 
-    pub fn create_object_box(&mut self, o: Box<dyn Obj>) {
+    pub fn create_object_box(&mut self, mut o: Box<dyn Obj>) {
+        o.spawned(self);
         if self.objects.len() < MAX_OBJECTS {
             self.objects.push(Slot::Obj(o));
         }
@@ -527,7 +531,8 @@ impl Game {
         self.create_effect_box(Box::new(o));
     }
 
-    pub fn create_effect_box(&mut self, o: Box<dyn Obj>) {
+    pub fn create_effect_box(&mut self, mut o: Box<dyn Obj>) {
+        o.spawned(self);
         if self.effects.len() < MAX_EFFECTS_OBJECTS {
             self.effects.push(Slot::Obj(o));
         }
@@ -537,7 +542,8 @@ impl Game {
         self.create_alwaysupdate_box(Box::new(o));
     }
 
-    pub fn create_alwaysupdate_box(&mut self, o: Box<dyn Obj>) {
+    pub fn create_alwaysupdate_box(&mut self, mut o: Box<dyn Obj>) {
+        o.spawned(self);
         if self.alwaysupdate.len() < MAX_OBJECTS {
             self.alwaysupdate.push(Slot::Obj(o));
         }
@@ -548,7 +554,12 @@ impl Game {
         self.create_dekoration_box(Box::new(o));
     }
 
-    pub fn create_dekoration_box(&mut self, o: Box<dyn Obj>) {
+    pub fn create_dekoration_box(&mut self, mut o: Box<dyn Obj>) {
+        o.spawned(self);
+        self.insert_dekoration(o);
+    }
+
+    fn insert_dekoration(&mut self, o: Box<dyn Obj>) {
         if self.dekorations.len() < MAX_DEKORATION_OBJECTS {
             self.dekorations.push(Slot::Obj(o));
         } else {
@@ -744,9 +755,12 @@ impl Game {
         for i in 0..self.list(l).len() {
             if let Some(o) = self.base_at(l, i) {
                 eprintln!(
-                    "S {} {} me={:x} x={} y={} z={} l={} cx={} cy={} cw={} ch={} e={} str={} sx={} sy={}",
+                    "S {} {} me={:x} x={} y={} z={} l={} cx={} cy={} cw={} ch={} e={} str={} sx={} sy={} img={}x{} f={}",
                     tag, i, o.me, o.x, o.y, o.z, o.layer, o.collision_x(), o.collision_y(), o.coll_width, o.coll_height,
-                    o.energy, o.strength, o.speed_x, o.speed_y
+                    o.energy, o.strength, o.speed_x, o.speed_y,
+                    if o.images.is_empty() { 0 } else { o.image().w },
+                    if o.images.is_empty() { 0 } else { o.image().h },
+                    o.current_image
                 );
             }
         }
@@ -764,6 +778,14 @@ impl Game {
     }
 
     fn collide_pair(&mut self, la: List, i: usize, lb: List, j: usize) {
+        if let Some(f) = std::env::var("URBAN_STATE_FRAME").ok().and_then(|v| v.parse::<u64>().ok()) {
+            if sys::replay_frame() == f {
+                if let (Some(a), Some(b), false) = (self.base_at(la, i), self.base_at(lb, j), la == List::Innerlayer) {
+                    let tag = if la == List::AlwaysUpdate { "always" } else { "obj" };
+                    eprintln!("C {} {} {} {:x} {:x}", tag, i, j, a.me, b.me);
+                }
+            }
+        }
         let (mut a, pa) = self.take(la, i);
         let (mut b, pb) = self.take(lb, j);
         a.collision(b.as_mut(), self);
@@ -782,9 +804,12 @@ impl Game {
         self.player = Some(p);
     }
 
+    /// Loop bounds are re-read every iteration: collisions can spawn objects (explosions),
+    /// and the original's `j < num_objects` checks included them in the same pass.
     fn check_collision(&mut self) {
         if self.player.as_ref().map(|p| p.base().layer == 0).unwrap_or(false) {
-            for i in 0..self.innerlayer.len() {
+            let mut i = 0;
+            while i < self.innerlayer.len() {
                 let hit = match (self.player.as_deref(), self.base_at(List::Innerlayer, i)) {
                     (Some(p), Some(b)) => Self::overlap(p.base(), b),
                     _ => false,
@@ -792,10 +817,13 @@ impl Game {
                 if hit {
                     self.collide_player_with(List::Innerlayer, i);
                 }
+                i += 1;
             }
         }
-        for i in 0..self.innerlayer.len() {
-            for j in i + 1..self.innerlayer.len() {
+        let mut i = 0;
+        while i < self.innerlayer.len() {
+            let mut j = i + 1;
+            while j < self.innerlayer.len() {
                 let hit = match (self.base_at(List::Innerlayer, i), self.base_at(List::Innerlayer, j)) {
                     (Some(a), Some(b)) => Self::overlap(b, a),
                     _ => false,
@@ -803,33 +831,41 @@ impl Game {
                 if hit {
                     self.collide_pair(List::Innerlayer, j, List::Innerlayer, i);
                 }
+                j += 1;
             }
+            i += 1;
         }
-        for i in 0..self.objects.len() {
-            let Some(a) = self.base_at(List::Objects, i) else { continue };
-            if self.obj_off_screen(a) {
-                continue;
-            }
-            for j in i + 1..self.objects.len() {
-                let (Some(a), Some(b)) = (self.base_at(List::Objects, i), self.base_at(List::Objects, j)) else { continue };
-                if a.layer != b.layer || self.obj_off_screen(b) {
-                    continue;
+        let mut i = 0;
+        while i < self.objects.len() {
+            let skip = match self.base_at(List::Objects, i) {
+                Some(a) => self.obj_off_screen(a),
+                None => true,
+            };
+            if !skip {
+                let mut j = i + 1;
+                while j < self.objects.len() {
+                    if let (Some(a), Some(b)) = (self.base_at(List::Objects, i), self.base_at(List::Objects, j)) {
+                        if a.layer == b.layer && !self.obj_off_screen(b) && Self::overlap(a, b) {
+                            self.collide_pair(List::Objects, i, List::Objects, j);
+                        }
+                    }
+                    j += 1;
                 }
-                if Self::overlap(a, b) {
-                    self.collide_pair(List::Objects, i, List::Objects, j);
-                }
             }
+            i += 1;
         }
-        for i in 0..self.alwaysupdate.len() {
-            for j in 0..self.objects.len() {
-                let (Some(a), Some(b)) = (self.base_at(List::AlwaysUpdate, i), self.base_at(List::Objects, j)) else { continue };
-                if a.layer != b.layer {
-                    continue;
+        let mut i = 0;
+        while i < self.alwaysupdate.len() {
+            let mut j = 0;
+            while j < self.objects.len() {
+                if let (Some(a), Some(b)) = (self.base_at(List::AlwaysUpdate, i), self.base_at(List::Objects, j)) {
+                    if a.layer == b.layer && Self::overlap(a, b) {
+                        self.collide_pair(List::AlwaysUpdate, i, List::Objects, j);
+                    }
                 }
-                if Self::overlap(a, b) {
-                    self.collide_pair(List::AlwaysUpdate, i, List::Objects, j);
-                }
+                j += 1;
             }
+            i += 1;
         }
     }
 
@@ -879,8 +915,12 @@ impl Game {
                 }
                 self.list_mut(l).remove(i);
                 match r {
-                    Upd::ToDekoration => self.create_dekoration_box(o),
-                    Upd::ToAlwaysUpdate => self.create_alwaysupdate_box(o),
+                    Upd::ToDekoration => self.insert_dekoration(o),
+                    Upd::ToAlwaysUpdate => {
+                        if self.alwaysupdate.len() < MAX_OBJECTS {
+                            self.alwaysupdate.push(Slot::Obj(o));
+                        }
+                    }
                     _ => {}
                 }
             } else {
@@ -917,6 +957,9 @@ impl Game {
             if sys::replay_frame() == f {
                 self.dump_state(List::Objects, "obj");
                 self.dump_state(List::Innerlayer, "inner");
+                self.dump_state(List::Effects, "eff");
+                self.dump_state(List::AlwaysUpdate, "always");
+                self.dump_state(List::Dekorations, "dekor");
             }
         }
         self.check_collision();
@@ -1026,7 +1069,12 @@ impl Game {
 
         sys::wait_frame(FRAMESPERSEC as u32);
         if self.do_shake != 0 {
-            sys::show(&self.buffer, rng::random() % 3 - 1, rng::random() % 3 - 1);
+            let dx = rng::random() % 3 - 1;
+            let dy = rng::random() % 3 - 1;
+            if std::env::var_os("URBAN_SHAKE_TRACE").is_some() {
+                eprintln!("SHAKE {} {} {}", sys::replay_frame(), dx, dy);
+            }
+            sys::show(&self.buffer, dx, dy);
         } else {
             sys::show(&self.buffer, 0, 0);
         }
@@ -1273,24 +1321,46 @@ impl Game {
                                 self.objects.push(Slot::Player);
                             }
                         }
-                        Some(crate::objects::Spawn::Object(o)) => self.objects.push(Slot::Obj(o)),
-                        Some(crate::objects::Spawn::Inner(o)) => {
+                        Some(crate::objects::Spawn::Object(mut o)) => {
+                            o.spawned(self);
+                            self.objects.push(Slot::Obj(o));
+                        }
+                        Some(crate::objects::Spawn::Inner(mut o)) => {
+                            o.spawned(self);
                             if self.innerlayer.len() < MAX_INNERLAYER {
                                 self.innerlayer.push(Slot::Obj(o));
                             }
                         }
-                        Some(crate::objects::Spawn::Always(o)) => self.alwaysupdate.push(Slot::Obj(o)),
+                        Some(crate::objects::Spawn::Always(mut o)) => {
+                            o.spawned(self);
+                            self.alwaysupdate.push(Slot::Obj(o));
+                        }
                         None => {}
                     }
                 }
             }
         }
-        // Elevators go to the end of the innerlayer list so stations/wires update first.
-        let (mut rest, elev): (Vec<Slot>, Vec<Slot>) = std::mem::take(&mut self.innerlayer)
-            .into_iter()
-            .partition(|s| !matches!(s, Slot::Obj(o) if o.base().me == FRIEND_ELEVATOR));
-        rest.extend(elev);
-        self.innerlayer = rest;
+        // Elevators go to the end of the innerlayer list, using the original's swap loop
+        // (not a stable partition: the resulting order decides update order).
+        let is_elev = |s: &Slot| matches!(s, Slot::Obj(o) if o.base().me == FRIEND_ELEVATOR);
+        let n = self.innerlayer.len();
+        if n > 0 {
+            let mut j = n as i64 - 1;
+            let mut i = 0i64;
+            while i < j {
+                if is_elev(&self.innerlayer[i as usize]) {
+                    while j > i {
+                        if !is_elev(&self.innerlayer[j as usize]) {
+                            self.innerlayer.swap(i as usize, j as usize);
+                            j -= 1;
+                            break;
+                        }
+                        j -= 1;
+                    }
+                }
+                i += 1;
+            }
+        }
 
         let vol = sound::music_volume();
         for v in (1..=vol).rev() {

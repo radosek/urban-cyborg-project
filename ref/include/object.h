@@ -136,6 +136,7 @@ class Object {
 		Object(int X, int Y, int Z, int Mode = MODE_NORMAL);
                 virtual ~Object();
                 BITMAP *GetImage();
+                int GetCurrentImage() {return current_image;}
                 virtual int update();
                 int GetX() {return x;}
                 int GetY() {return y;}

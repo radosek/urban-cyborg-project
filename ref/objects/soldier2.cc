@@ -319,7 +319,7 @@ int soldier2_o::update() {
                                                 anim.reset();
                                         case 1:
                                         case 2:
-                                        	current_image = (direction == RIGHT_DIR ? 23 : 21) + (r = anim.next_frame(1, FIRING_DELAY));
+                                        	current_image = (direction == RIGHT_DIR ? 22 : 20) + (r = anim.next_frame(1, FIRING_DELAY));
                                                 if (r == 0 && counter2 == 1) {
 				                       	if (direction == RIGHT_DIR)
 						        	ENGINE.create_object(new grenade_o(x + width + 5, y - 10, z, 4, -(2 + random() % 5)));

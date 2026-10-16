@@ -119,17 +119,18 @@ impl Tank {
 impl Obj for Tank {
     crate::obj_boilerplate!();
 
+    fn spawned(&mut self, g: &mut Game) {
+        let (x, y, z) = (self.base.x, self.base.y, self.base.z);
+        let w1 = TankWheel::new(x, y, z - TILE_TOP_HEIGHT);
+        self.wheel1 = Some(w1.base.id);
+        g.create_object(w1);
+        let w2 = TankWheel::new(x, y, z + TILE_TOP_HEIGHT);
+        self.wheel2 = Some(w2.base.id);
+        g.create_object(w2);
+    }
+
     fn update(&mut self, g: &mut Game) -> Upd {
         if self.base.counter5 == 0 {
-            // The original creates the wheels in its constructor.
-            let (x, y, z) = (self.base.x, self.base.y, self.base.z);
-            let w1 = TankWheel::new(x, y, z - TILE_TOP_HEIGHT);
-            self.wheel1 = Some(w1.base.id);
-            g.create_object(w1);
-            let w2 = TankWheel::new(x, y, z + TILE_TOP_HEIGHT);
-            self.wheel2 = Some(w2.base.id);
-            g.create_object(w2);
-
             g.score.init_boss_health(MAX_ENERGY);
             g.score.set_boss_health(MAX_ENERGY);
             self.base.counter5 = 1;

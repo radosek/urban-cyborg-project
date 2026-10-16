@@ -1004,9 +1004,9 @@ static void dump_state(const char *tag, Object **list, int n) {
 		Object *o = list[i];
 		if (!o)
 			continue;
-		fprintf(stderr, "S %s %d me=%x x=%d y=%d z=%d l=%d cx=%d cy=%d cw=%d ch=%d e=%d str=%d sx=%d sy=%d\n", tag, i, o->GetWho(),
+		fprintf(stderr, "S %s %d me=%x x=%d y=%d z=%d l=%d cx=%d cy=%d cw=%d ch=%d e=%d str=%d sx=%d sy=%d img=%dx%d f=%d\n", tag, i, o->GetWho(),
 			o->GetX(), o->GetY(), o->GetZ(), o->GetLayer(), o->GetCollisionX(), o->GetCollisionY(),
-			o->GetCollisionWidth(), o->GetCollisionHeight(), o->GetEnergy(), o->GetStrength(), o->GetSpeedX(), o->GetSpeedY());
+			o->GetCollisionWidth(), o->GetCollisionHeight(), o->GetEnergy(), o->GetStrength(), o->GetSpeedX(), o->GetSpeedY(), o->GetImage()->w, o->GetImage()->h, o->GetCurrentImage());
 	}
 }
 int Engine::display_map() {
@@ -1042,6 +1042,9 @@ int Engine::display_map() {
 	if (getenv("URBAN_STATE_FRAME") && replay_frame_no() == atol(getenv("URBAN_STATE_FRAME"))) {
 		dump_state("obj", objects, num_objects);
 		dump_state("inner", innerlayer, num_innerlayer);
+		dump_state("eff", effects, num_effects);
+		dump_state("always", alwaysupdate, num_alwaysupdate);
+		dump_state("dekor", dekorations, ringbuffer ? MAX_DEKORATION_OBJECTS : num_dekorations);
 	}
 	check_collision();
 
@@ -1286,7 +1289,13 @@ int Engine::display_map() {
 	show_next_frame = 0;
 
 	if (do_shake) {
-		blit(buffer, screen, 0, 0, random() % 3 - 1, random() % 3 - 1, SCREEN_WIDTH, SCREEN_HEIGHT);
+		{
+			int sdx = random() % 3 - 1;
+			int sdy = random() % 3 - 1;
+			if (getenv("URBAN_SHAKE_TRACE"))
+				fprintf(stderr, "SHAKE %ld %d %d\n", replay_frame_no(), sdx, sdy);
+			blit(buffer, screen, 0, 0, sdx, sdy, SCREEN_WIDTH, SCREEN_HEIGHT);
+		}
 	} else
 		blit(buffer, screen, 0, 0, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -1514,6 +1523,8 @@ void Engine::check_collision() {
 
 				if (y_dist < height) {
 
+					if (getenv("URBAN_STATE_FRAME") && replay_frame_no() == atol(getenv("URBAN_STATE_FRAME")))
+						fprintf(stderr, "C obj %d %d %x %x\n", i, j, objects[i]->GetWho(), objects[j]->GetWho());
 					objects[i]->Collision(objects[j]);
 					objects[j]->Collision(objects[i]);
 				}
@@ -1541,6 +1552,8 @@ void Engine::check_collision() {
 
 				if (y_dist < height) {
 
+					if (getenv("URBAN_STATE_FRAME") && replay_frame_no() == atol(getenv("URBAN_STATE_FRAME")))
+						fprintf(stderr, "C always %d %d %x %x\n", i, j, alwaysupdate[i]->GetWho(), objects[j]->GetWho());
 					alwaysupdate[i]->Collision(objects[j]);
 					objects[j]->Collision(alwaysupdate[i]);
 				}

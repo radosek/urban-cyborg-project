@@ -11,7 +11,6 @@ const EXPLODE_FRAMES: i32 = 4;
 pub struct AirExplosion {
     pub base: Base,
     anim: Anim,
-    quake_done: bool,
 }
 
 impl AirExplosion {
@@ -31,19 +30,18 @@ impl AirExplosion {
         b.enemies = !b.friends;
         b.counter = EXPLODE_FRAMES;
         b.me = FRIEND_EXPLOSION;
-        AirExplosion { base: b, anim: Anim::default(), quake_done: false }
+        AirExplosion { base: b, anim: Anim::default() }
     }
 }
 
 impl Obj for AirExplosion {
     crate::obj_boilerplate!();
 
-    fn update(&mut self, g: &mut Game) -> Upd {
-        // The original enables the earthquake in its constructor, which has no Game here.
-        if !self.quake_done {
-            self.quake_done = true;
-            g.enable_earthquake();
-        }
+    fn spawned(&mut self, g: &mut Game) {
+        g.enable_earthquake();
+    }
+
+    fn update(&mut self, _g: &mut Game) -> Upd {
         let b = &mut self.base;
         if b.counter != 0 {
             b.counter -= 1;

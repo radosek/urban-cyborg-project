@@ -12,7 +12,6 @@ const EXPLODE_FRAMES: i32 = 2;
 pub struct Explosion {
     pub base: Base,
     anim: Anim,
-    quake_started: bool,
 }
 
 impl Explosion {
@@ -34,19 +33,18 @@ impl Explosion {
         b.counter = EXPLODE_FRAMES;
         b.me = FRIEND_EXPLOSION;
         sound::play_sfx(EXPLODE_SAMPLE);
-        Explosion { base: b, anim: Anim::default(), quake_started: false }
+        Explosion { base: b, anim: Anim::default() }
     }
 }
 
 impl Obj for Explosion {
     crate::obj_boilerplate!();
 
-    fn update(&mut self, g: &mut Game) -> Upd {
-        // The C++ constructor enabled the earthquake; it needs the engine, so it happens here.
-        if !self.quake_started {
-            self.quake_started = true;
-            g.enable_earthquake();
-        }
+    fn spawned(&mut self, g: &mut Game) {
+        g.enable_earthquake();
+    }
+
+    fn update(&mut self, _g: &mut Game) -> Upd {
         let b = &mut self.base;
         if b.counter != 0 {
             b.counter -= 1;
