@@ -287,12 +287,8 @@ pub fn with_screen<R>(f: impl FnOnce(&mut Bitmap) -> R) -> R {
 
 /// Copies a full frame to the screen and shows it (the game's `blit(buffer, screen, ...)`).
 pub fn show(buf: &Bitmap, dx: i32, dy: i32) {
-    with(|s| {
-        if dx != 0 || dy != 0 {
-            s.screen.clear();
-        }
-        gfx::blit(buf, &mut s.screen, 0, 0, dx, dy, buf.w, buf.h);
-    });
+    // A shaken frame is blitted over the previous one without clearing, like the original.
+    with(|s| gfx::blit(buf, &mut s.screen, 0, 0, dx, dy, buf.w, buf.h));
     pump();
     present(true);
 }
