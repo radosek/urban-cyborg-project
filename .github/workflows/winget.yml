@@ -1,0 +1,23 @@
+name: winget-validate
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['packaging/winget/**']
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install winget
+        uses: Cyberboss/install-winget@v1
+      - name: Validate and install the manifest
+        shell: pwsh
+        run: |
+          winget settings --enable LocalManifestFiles
+          winget validate --manifest packaging/winget
+          winget install --manifest packaging/winget --accept-package-agreements --accept-source-agreements --disable-interactivity
+          $out = & "$env:LOCALAPPDATA\Microsoft\WinGet\Links\urban.exe" -h
+          $out
+          if (-not ($out -match 'Urban v')) { exit 1 }
