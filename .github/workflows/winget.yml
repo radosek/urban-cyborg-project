@@ -7,11 +7,9 @@ on:
 
 jobs:
   validate:
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
-      - name: Install winget
-        uses: Cyberboss/install-winget@v1
       - name: Validate and install the manifest
         shell: pwsh
         run: |
