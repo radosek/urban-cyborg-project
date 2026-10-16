@@ -1,15 +1,23 @@
 mod config;
+mod config_ui;
+mod credits;
 mod ctrls;
 mod dat;
 mod engine;
 mod flags;
+mod flc;
+mod game;
+mod highscore;
 mod font;
 mod gfx;
 mod icache;
+mod intro;
 mod keys;
 mod map;
+mod menu;
 mod objects;
 mod otypes;
+mod outtro;
 mod rng;
 mod score;
 mod sound;
@@ -50,5 +58,5 @@ fn main() {
         g.play_level(&l, None, config::get().ctrl_type);
         return;
     }
-    eprintln!("menu not ported yet; use -f gamemaps/level11.map");
+    menu::run(&mut g);
 }
