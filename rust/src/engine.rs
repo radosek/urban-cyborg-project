@@ -664,7 +664,7 @@ impl Game {
     pub fn check_floor(&self, x: i32, y: i32, z: i32) -> bool {
         let bx = x / (TILE_WIDTH - 1);
         let by = y / TILE_SIDE_HEIGHT;
-        let bz = z / (TILE_TOP_HEIGHT - 1).min(2);
+        let bz = (z / (TILE_TOP_HEIGHT - 1)).min(2);
         let cell = self.map.get_bg(bx, by, bz);
         cell != 0 && !self.map.is_fake(cell)
     }
